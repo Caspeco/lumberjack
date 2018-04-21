@@ -1,4 +1,5 @@
 @import '~antd/dist/antd.css';
+@import url('https://fonts.googleapis.com/css?family=Inconsolata');
 
 #root,#root > div, .App {
   height:100%;
@@ -72,7 +73,7 @@
 .consoleRow {
     display: flex;
     font-size: 12px;
-    font-family: monospace;
+    font-family: 'Inconsolata', monospace;
     border-bottom: 1px solid transparent;
     padding:3px;
     align-items: center;
