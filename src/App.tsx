@@ -1,4 +1,4 @@
-import { Modal, Icon, DatePicker, Button, Input, Tooltip } from 'antd';
+import { message, Modal, Icon, DatePicker, Button, Input, Tooltip } from 'antd';
 import momentjson from 'moment-json-parser';
 const RangePicker = DatePicker.RangePicker;
 import * as moment from 'moment';
@@ -203,8 +203,8 @@ class App extends React.Component<{}, IState> {
                             />
                             <Button onClick={this.handleShowSettings}>Settings</Button>
                         </div>
-                        <Tooltip placement="left" title="Ctrl+Enter">
-                            <Button type="primary" className="refreshbtn" onClick={this.handleRefresh} loading={this.state.loading}>Refresh</Button>
+                        <Tooltip placement="left" title="(Enter)">
+                            <Button type="primary" className="refreshbtn" onClick={this.handleRefresh}>Refresh</Button>
                         </Tooltip>
                     </header>
 
@@ -300,19 +300,12 @@ class App extends React.Component<{}, IState> {
     }
 
     private handleRefresh = async (e?: any) => {
-        this.setState({
-            loading: true
-        });
+        
         if (e) {
             e.stopPropagation();
         }
 
         await this.getData();
-
-        this.setState({
-            loading: false
-        });
-
     }
 
     private handleShowDetails = (r: any) => {
@@ -360,12 +353,26 @@ class App extends React.Component<{}, IState> {
 
     private async getData() {
 
+        const hide = message.loading('Refreshing data...',0);
         // save query to storage
         localStorage.setItem("query", JSON.stringify(this.state.query));
 
-        const d: InsightsResponse = await async_fetch_data(this.state.settings.apiId, this.state.settings.apiKey, this.state.query);
-        console.log("Result: ", d);
+        let d: InsightsResponse
+        try {
+             d = await async_fetch_data(this.state.settings.apiId, this.state.settings.apiKey, this.state.query);
+            console.log("Result: ", d);
+        } catch (error) {
+            console.error("Failed", error);
 
+            // do not warn on manual abort
+            if(error.code !== 20) {
+                message.error('Failed to fetch data from AppInsights, check your settings');
+            }
+            return;
+        } finally {
+            hide();
+        }
+        
         const table = d.tables[0];
         table.rows = table.rows.map(row => {
             return row.map(value => {
