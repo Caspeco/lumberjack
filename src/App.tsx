@@ -333,9 +333,11 @@ class App extends React.Component<{}, IState> {
                     <pre>{JSON.stringify(obj, (k, v) => {
                         if (v === null || v === "") {
                             return undefined
-                        } else if (typeof v === "string" && v.indexOf("[") === 1) {
-                            console.log("ye", v);
-                            return JSON.stringify(v, null, 2);
+                        } else if (typeof v === "string") {
+                            // JSON parse inner values,
+                            if (v[0] === "[" || v[0] === "{") {
+                                return JSON.parse(v);
+                            }
                         }
 
                         console.log(v, typeof v);
@@ -374,17 +376,17 @@ class App extends React.Component<{}, IState> {
         }
         
         const table = d.tables[0];
-        table.rows = table.rows.map(row => {
-            return row.map(value => {
-                if (typeof value === "string") {
-                    // JSON parse inner values,
-                    if (value[0] === "[" || value[0] === "{") {
-                        return JSON.parse(value);
-                    }
-                }
-                return value;
-            });
-        });
+        // table.rows = table.rows.map(row => {
+        //     return row.map(value => {
+        //         if (typeof value === "string") {
+        //             // JSON parse inner values,
+        //             if (value[0] === "[" || value[0] === "{") {
+        //                 return JSON.parse(value);
+        //             }
+        //         }
+        //         return value;
+        //     });
+        // });
 
         const rows = table.rows.map(r => {
             return {
