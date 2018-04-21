@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@researchgate/react-intersection-list": "^1.0.2",
+    "@researchgate/react-intersection-observer": "^0.6.1",
     "antd": "^3.4.1",
     "moment": "^2.22.1",
     "moment-json-parser": "^0.9.1",

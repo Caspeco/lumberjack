@@ -6,7 +6,8 @@ import * as React from 'react';
 import * as reactreplace from "react-string-replace";
 import { HotKeys } from 'react-hotkeys';
 import './App.css';
-
+// import Observer from '@researchgate/react-intersection-observer';
+import List from '@researchgate/react-intersection-list';
 momentjson.overrideDefault();
 
 // import logo from './logo.svg';
@@ -360,7 +361,6 @@ class App extends React.Component<{}, IState> {
         let d: InsightsResponse
         try {
              d = await async_fetch_data(this.state.settings.apiId, this.state.settings.apiKey, this.state.query);
-            console.log("Result: ", d);
         } catch (error) {
             console.error("Failed", error);
 
@@ -379,8 +379,7 @@ class App extends React.Component<{}, IState> {
                 if (typeof value === "string") {
                     // JSON parse inner values,
                     if (value[0] === "[" || value[0] === "{") {
-                        const res = JSON.parse(value);
-                        return res;
+                        return JSON.parse(value);
                     }
                 }
                 return value;
@@ -424,22 +423,37 @@ interface IConsoleProps {
 class ConsoleView extends React.Component<IConsoleProps> {
 
     public render() {
-        return (
-            <div className="consoleView">
-                {this.props.rows.map(r => <ConsoleRow key={r.id} {...r} />)}
-            </div>
+
+        
+
+        return (            
+              <List currentLength={this.props.rows.length} pageSize={200} itemsRenderer={this.itemsRenderer}>
+                {this.itemRenderer}
+                </List>
         );
     }
+
+    private itemsRenderer = (items:any, ref:any) => (
+        <div className="consoleView" ref={ref}>
+            {items}
+        </div>
+    );
+
+    private itemRenderer = (index:number, key:string) => <ConsoleRow key={key} {...this.props.rows[index]} />;
 }
 
-class ConsoleRow extends React.Component<ILogRow> {
+class ConsoleRow extends React.Component<ILogRow,any> {
     /**
      *
      */
 
     constructor(props: ILogRow) {
         super(props);
+        this.state = {
+            visible:false
+        }
     }
+    
     public render() {
 
         const severityLevel = translateSeverityLevel(this.props.severityLevel);
@@ -451,13 +465,14 @@ class ConsoleRow extends React.Component<ILogRow> {
             return <span className="hashtag" key={i} onClick={grep}>{match}</span>
         });
 
-        const handlers = {
-            'ctrl+enter': this.setGrep
-        };
+        // const handlers = {
+        //     'ctrl+enter': this.setGrep
+        // };
+
+        
 
         return (
-            <HotKeys handlers={handlers}>
-                <div className="consoleRow">
+                <div className="consoleRow" style={{visibility: this.state.visible}}>
                     <div className="id">{this.props.id}</div>
                     <div className="timestamp">{this.props.timestamp}</div>
                     <Icon className="details" type="message" onClick={this.showDetails} />
@@ -465,16 +480,16 @@ class ConsoleRow extends React.Component<ILogRow> {
                     <div className="message">{msg}</div>
                     <div className="itemType">{this.props.itemType}</div>
                 </div>
-            </HotKeys>
         )
     }
 
-    private setGrep = () => {
-        const selection = window.getSelection().getRangeAt(0).cloneContents().textContent;
-        if (typeof selection === "string" && selection !== "") {
-            this.props.setGrep(selection);
-        }
-    }
+ 
+    // private setGrep = () => {
+    //     const selection = window.getSelection().getRangeAt(0).cloneContents().textContent;
+    //     if (typeof selection === "string" && selection !== "") {
+    //         this.props.setGrep(selection);
+    //     }
+    // }
 
     private showDetails = () => {
         this.props.showDetails(this.props);
