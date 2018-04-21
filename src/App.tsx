@@ -34,13 +34,13 @@ async function async_fetch(url: string, conf: {}) {
 }
 
 interface IQueryObject {
-    source: "traces";
     timeRange: {
         from: moment.Moment;
         to: moment.Moment;
     };
     orderBy: "desc" | "asc";
     grep: string;
+    severityLevel: [1, 2, 3, 4];
 }
 
 function escapeai(str: string) {
@@ -48,6 +48,9 @@ function escapeai(str: string) {
 }
 
 async function async_fetch_data(appId: string, appKey: string, query: IQueryObject) {
+
+    const severityLevel = query.severityLevel.length > 0 ? `where severityLevel in (${query.severityLevel.join(",")})` : "";
+
     const q2 = `
     exceptions
     | where cloud_RoleInstance contains "pingpong"
@@ -59,8 +62,10 @@ async function async_fetch_data(appId: string, appKey: string, query: IQueryObje
     | project-away message 
     | project-rename message = message2
     | where message contains "${escapeai(query.grep)}"
+    | ${severityLevel}
     | order by timestamp ${query.orderBy}
     `;
+
 
     // const q = `${query.source}
     // | where message contains "${query.grep}"
@@ -128,14 +133,16 @@ class App extends React.Component<{}, IState> {
     constructor(props: {}) {
         super(props);
 
-        const query: IQueryObject = JSON.parse(localStorage.getItem("query") as string) || {
+        const query: IQueryObject = {
             orderBy: "desc",
             source: "traces",
             timeRange: {
                 from: moment().subtract(1, "h"),
                 to: moment()
             },
-            grep: ""
+            grep: "",
+            severityLevel: [0, 1, 2, 3],
+            ...JSON.parse(localStorage.getItem("query") as string)
         };
 
         const settings = JSON.parse(localStorage.getItem("settings") as string) || {
@@ -326,7 +333,7 @@ class App extends React.Component<{}, IState> {
 
         console.log(obj);
         Modal.info({
-            title: 'This is a notification message',
+            title: 'Details',
             content: (
                 <div>
                     <pre>{JSON.stringify(obj, (k, v) => {
@@ -341,7 +348,6 @@ class App extends React.Component<{}, IState> {
 
                         return v;
                     }, 2)}</pre>
-                    <p>some messages...some messages...</p>
                 </div>
             ),
             width: "80%"
@@ -353,17 +359,18 @@ class App extends React.Component<{}, IState> {
     }
 
     private async getData() {
-        console.log("getdata");
-        // save to ls
-        localStorage.setItem("query", JSON.stringify(this.state.query));
-        const d: InsightsResponse = await async_fetch_data(this.state.settings.apiId, this.state.settings.apiKey, this.state.query);
-        // tslint:disable-next-line:no-console
-        console.log(d);
-        const table = d.tables[0];
 
+        // save query to storage
+        localStorage.setItem("query", JSON.stringify(this.state.query));
+
+        const d: InsightsResponse = await async_fetch_data(this.state.settings.apiId, this.state.settings.apiKey, this.state.query);
+        console.log("Result: ", d);
+
+        const table = d.tables[0];
         table.rows = table.rows.map(row => {
             return row.map(value => {
                 if (typeof value === "string") {
+                    // JSON parse inner values,
                     if (value[0] === "[" || value[0] === "{") {
                         const res = JSON.parse(value);
                         return res;
@@ -374,10 +381,6 @@ class App extends React.Component<{}, IState> {
         });
 
         const rows = table.rows.map(r => {
-            // console.log(r);
-
-
-
             return {
                 id: get("itemId", table, r),
                 loglevel: "info",
@@ -443,25 +446,25 @@ class ConsoleRow extends React.Component<ILogRow> {
 
         const handlers = {
             'ctrl+enter': this.setGrep
-          };
+        };
 
         return (
             <HotKeys handlers={handlers}>
-            <div className="consoleRow">
-                <div className="id">{this.props.id}</div>
-                <div className="timestamp">{this.props.timestamp}</div>
-                <Icon className="details" type="message" onClick={this.showDetails} />
-                <div className={"loglevel " + severityLevel}>{severityLevel}</div>
-                <div className="message">{msg}</div>
-                <div className="itemType">{this.props.itemType}</div>
-            </div>
+                <div className="consoleRow">
+                    <div className="id">{this.props.id}</div>
+                    <div className="timestamp">{this.props.timestamp}</div>
+                    <Icon className="details" type="message" onClick={this.showDetails} />
+                    <div className={"loglevel " + severityLevel}>{severityLevel}</div>
+                    <div className="message">{msg}</div>
+                    <div className="itemType">{this.props.itemType}</div>
+                </div>
             </HotKeys>
         )
     }
 
     private setGrep = () => {
         const selection = window.getSelection().getRangeAt(0).cloneContents().textContent;
-        if(typeof selection === "string" && selection !== "") {
+        if (typeof selection === "string" && selection !== "") {
             this.props.setGrep(selection);
         }
     }
