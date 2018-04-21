@@ -3,6 +3,7 @@ import momentjson from 'moment-json-parser';
 const RangePicker = DatePicker.RangePicker;
 import * as moment from 'moment';
 import * as React from 'react';
+import * as reactreplace from "react-string-replace";
 import { HotKeys } from 'react-hotkeys';
 import './App.css';
 
@@ -42,6 +43,10 @@ interface IQueryObject {
     grep: string;
 }
 
+function escapeai(str: string) {
+    return str.replace(/["]/g, '\\"')
+}
+
 async function async_fetch_data(appId: string, appKey: string, query: IQueryObject) {
     const q2 = `
     exceptions
@@ -53,7 +58,7 @@ async function async_fetch_data(appId: string, appKey: string, query: IQueryObje
     | where timestamp between(datetime(${query.timeRange.from.utc().format("YYYY-MM-DD HH:mm:ss")}) .. datetime(${query.timeRange.to.utc().format("YYYY-MM-DD HH:mm:ss")}))
     | project-away message 
     | project-rename message = message2
-    | where message contains "${query.grep}"
+    | where message contains "${escapeai(query.grep)}"
     | order by timestamp ${query.orderBy}
     `;
 
@@ -63,10 +68,13 @@ async function async_fetch_data(appId: string, appKey: string, query: IQueryObje
     // | order by timestamp ${query.orderBy}
     // `;
     console.info(q2);
-    return async_fetch(API_BASE + appId + "/query?timespan=PT12H&query=" + q2, {
+    return async_fetch(API_BASE + appId + "/query", {
+        body: JSON.stringify({ query: q2 }),
         headers: {
-            'x-api-key': appKey
-        }
+            'x-api-key': appKey,
+            'content-type': 'application/json'
+        },
+        method: "POST"
     })
 }
 
@@ -109,7 +117,7 @@ interface ISettings {
 }
 
 const map = {
-    'refresh': 'ctrl+enter'
+    'refresh': 'enter'
 };
 
 class App extends React.Component<{}, IState> {
@@ -278,6 +286,12 @@ class App extends React.Component<{}, IState> {
         });
     }
 
+    private handleSetGrep = (str: string) => {
+        this.setState((ps) => {
+            return { query: { ...ps.query, grep: str } }
+        }, this.getData);
+    }
+
     private handleRefresh = async (e?: any) => {
         this.setState({
             loading: true
@@ -371,7 +385,8 @@ class App extends React.Component<{}, IState> {
                 timestamp: get("timestamp", table, r),
                 severityLevel: get("severityLevel", table, r),
                 itemType: get("itemType", table, r),
-                showDetails: this.handleShowDetails
+                showDetails: this.handleShowDetails,
+                setGrep: this.handleSetGrep
             }
         })
 
@@ -387,6 +402,8 @@ interface ILogRow {
     message: string;
     id: string;
     severityLevel: number;
+    itemType: string;
+    setGrep: (str: string) => void;
     showDetails: (row: ILogRow) => void;
 }
 
@@ -406,19 +423,47 @@ class ConsoleView extends React.Component<IConsoleProps> {
 }
 
 class ConsoleRow extends React.Component<ILogRow> {
+    /**
+     *
+     */
+
+    constructor(props: ILogRow) {
+        super(props);
+    }
     public render() {
 
         const severityLevel = translateSeverityLevel(this.props.severityLevel);
 
+        const regexp = /\B(#[a-zA-Z0-9-]+\b|#"[a-zA-Z0-9- ]+["|\b])(?!;)/gu;
+
+        const msg = reactreplace(this.props.message, regexp, (match: string, i: number) => {
+            const grep = () => { this.props.setGrep(match); }
+            return <span className="hashtag" key={i} onClick={grep}>{match}</span>
+        });
+
+        const handlers = {
+            'ctrl+enter': this.setGrep
+          };
+
         return (
+            <HotKeys handlers={handlers}>
             <div className="consoleRow">
                 <div className="id">{this.props.id}</div>
                 <div className="timestamp">{this.props.timestamp}</div>
-                <Icon type="message" onClick={this.showDetails} />
+                <Icon className="details" type="message" onClick={this.showDetails} />
                 <div className={"loglevel " + severityLevel}>{severityLevel}</div>
-                <div className="message">{this.props.message}</div>
+                <div className="message">{msg}</div>
+                <div className="itemType">{this.props.itemType}</div>
             </div>
+            </HotKeys>
         )
+    }
+
+    private setGrep = () => {
+        const selection = window.getSelection().getRangeAt(0).cloneContents().textContent;
+        if(typeof selection === "string" && selection !== "") {
+            this.props.setGrep(selection);
+        }
     }
 
     private showDetails = () => {

@@ -64,8 +64,7 @@
 .consoleView {
   background: black;
   color:white;
-  max-width: 100vw;  
-  
+  max-width: 100vw;
   padding-top: 20px;
   flex: 1 1 auto;
 }
@@ -76,12 +75,29 @@
     font-family: monospace;
     border-bottom: 1px solid transparent;
     padding:3px;
+    align-items: center;
+}
+
+.consoleRow .hashtag {
+  background: white;
+  border-radius: 2px;
+  color: black;
+  padding: 2px 2px;
+}
+
+.consoleRow .details {
+  margin:0 5px;
+  cursor:pointer;
+}
+
+.consoleRow .itemType {
+  margin-left: auto;
 }
 
 .consoleRow .loglevel {
   color:black;
   margin-right: 5px;
-  background: white;
+  background: #b6b6b6;
   border-radius: 2px;
   padding:2px 5px;
   height:100%;
