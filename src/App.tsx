@@ -1,6 +1,7 @@
-import { message, Modal, Icon, DatePicker, Button, Input, Tooltip } from 'antd';
+import { Select, message, Modal, Icon, DatePicker, Button, Input, Tooltip } from 'antd';
 import momentjson from 'moment-json-parser';
 const RangePicker = DatePicker.RangePicker;
+const Option = Select.Option;
 import * as moment from 'moment';
 import * as React from 'react';
 import * as reactreplace from "react-string-replace";
@@ -178,15 +179,22 @@ class App extends React.Component<{}, IState> {
             'refresh': this.handleRefresh
         };
 
+        const orderBy = (
+            <Select defaultValue={this.state.query.orderBy} onChange={this.handleChangeOrderBy}>
+                <Option value="desc"><Icon type="arrow-down" /></Option>
+                <Option value="asc"><Icon type="arrow-up" /></Option>
+            </Select>);
+
         return (
             <HotKeys keyMap={map} handlers={handlers}>
                 <div className="App">
                     <header className="App-header">
-
-                        <Input.Search className="searchBar" placeholder="Grep for message..." type="search" value={this.state.query.grep} onChange={this.handleSearchChange} />
-
+                        <div className="searchBar">
+                        <Input.Search placeholder="Grep for message..." type="search"
+                            value={this.state.query.grep} onChange={this.handleSearchChange} addonAfter={orderBy} />
+                        </div>
                         <div className="searchControls">
-                            <Button onClick={this.handleChangeOrderBy}>{this.state.query.orderBy}</Button>
+                            
                             <RangePicker
                                 defaultValue={[this.state.query.timeRange.from, this.state.query.timeRange.to]}
                                 ranges={
@@ -451,9 +459,6 @@ class ConsoleRow extends React.Component<ILogRow,any> {
 
     constructor(props: ILogRow) {
         super(props);
-        this.state = {
-            visible:false
-        }
     }
     
     public render() {
@@ -471,10 +476,10 @@ class ConsoleRow extends React.Component<ILogRow,any> {
         //     'ctrl+enter': this.setGrep
         // };
 
-        
+        console.log("render");
 
         return (
-                <div className="consoleRow" style={{visibility: this.state.visible}}>
+                <div className="consoleRow" key={this.props.id}>
                     <div className="id">{this.props.id}</div>
                     <div className="timestamp">{this.props.timestamp}</div>
                     <Icon className="details" type="message" onClick={this.showDetails} />
