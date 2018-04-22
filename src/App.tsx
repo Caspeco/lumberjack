@@ -8,7 +8,9 @@ import * as reactreplace from "react-string-replace";
 import { HotKeys } from 'react-hotkeys';
 import './App.css';
 // import Observer from '@researchgate/react-intersection-observer';
-import List from '@researchgate/react-intersection-list';
+import DynamicList from '@researchgate/react-intersection-list';
+import { fromJS, List, Record,Map } from "immutable";
+
 momentjson.overrideDefault();
 
 // import logo from './logo.svg';
@@ -85,18 +87,18 @@ async function async_fetch_data(appId: string, appKey: string, query: IQueryObje
     })
 }
 
-interface ITableColumn {
-    name: string
-}
+// interface ITableColumn {
+//     name: string
+// }
 
-function getIndex(key: string, columns: ITableColumn[]) {
-    return columns.findIndex(c => c.name === key);
-}
+// function getIndex(key: string, columns: ITableColumn[]) {
+//     return columns.findIndex(c => c.name === key);
+// }
 
-function get(key: string, table: any, row: any) {
-    const i = getIndex(key, table.columns);
-    return row[i];
-}
+// function get(key: string, table: any, row: any) {
+//     const i = getIndex(key, table.columns);
+//     return row[i];
+// }
 
 interface InsightsResponse {
     tables: Array<{
@@ -105,10 +107,8 @@ interface InsightsResponse {
 }
 
 interface IState {
-    data: {
-        tables: any[]
-    }
-    rows: ILogRow[]
+    columns: any;
+    rows: List<ILogRow>
     search: string
     query: IQueryObject;
     settings: ISettings;
@@ -153,10 +153,8 @@ class App extends React.Component<{}, IState> {
         };
 
         this.state = {
-            data: {
-                tables: []
-            },
-            rows: [],
+            columns: [],
+            rows: List(),
             search: "",
             query,
             settings,
@@ -302,11 +300,11 @@ class App extends React.Component<{}, IState> {
         });
     }
 
-    private handleSetGrep = (str: string) => {
-        this.setState((ps) => {
-            return { query: { ...ps.query, grep: str } }
-        }, this.getData);
-    }
+    // private handleSetGrep = (str: string) => {
+    //     this.setState((ps) => {
+    //         return { query: { ...ps.query, grep: str } }
+    //     }, this.getData);
+    // }
 
     private handleRefresh = async (e?: any) => {
         
@@ -317,50 +315,50 @@ class App extends React.Component<{}, IState> {
         await this.getData();
     }
 
-    private handleShowDetails = (r: any) => {
-        const table = this.state.data.tables[0];
-        const rows: any[] = table.rows
-        // console.log(rows);
-        const original = rows.find(x => get("itemId", table, x) === r.id);
-        // console.log(original);
-        // console.log(table);
-        // construct obj with keys
-        const obj = {};
-        original.forEach((element: any[], index: number) => {
-            // console.log(element,index, table.columns[index]);
-            if (element) {
-                obj[table.columns[index].name] = element;
-            }
-        });
+    // private handleShowDetails = (r: any) => {
+    //     const table = this.state.data.tables[0];
+    //     const rows: any[] = table.rows
+    //     // console.log(rows);
+    //     const original = rows.find(x => get("itemId", table, x) === r.id);
+    //     // console.log(original);
+    //     // console.log(table);
+    //     // construct obj with keys
+    //     const obj = {};
+    //     original.forEach((element: any[], index: number) => {
+    //         // console.log(element,index, table.columns[index]);
+    //         if (element) {
+    //             obj[table.columns[index].name] = element;
+    //         }
+    //     });
 
-        console.log(obj);
-        Modal.info({
-            title: 'Details',
-            content: (
-                <div>
-                    <pre>{JSON.stringify(obj, (k, v) => {
-                        if (v === null || v === "") {
-                            return undefined
-                        } else if (typeof v === "string") {
-                            // JSON parse inner values,
-                            if (v[0] === "[" || v[0] === "{") {
-                                return JSON.parse(v);
-                            }
-                        }
+    //     console.log(obj);
+    //     Modal.info({
+    //         title: 'Details',
+    //         content: (
+    //             <div>
+    //                 <pre>{JSON.stringify(obj, (k, v) => {
+    //                     if (v === null || v === "") {
+    //                         return undefined
+    //                     } else if (typeof v === "string") {
+    //                         // JSON parse inner values,
+    //                         if (v[0] === "[" || v[0] === "{") {
+    //                             return JSON.parse(v);
+    //                         }
+    //                     }
 
-                        console.log(v, typeof v);
+    //                     console.log(v, typeof v);
 
-                        return v;
-                    }, 2)}</pre>
-                </div>
-            ),
-            width: "80%"
-        });
+    //                     return v;
+    //                 }, 2)}</pre>
+    //             </div>
+    //         ),
+    //         width: "80%"
+    //     });
 
-        this.setState({
-            showDetails: r
-        })
-    }
+    //     this.setState({
+    //         showDetails: r
+    //     })
+    // }
 
     private async getData() {
 
@@ -382,8 +380,40 @@ class App extends React.Component<{}, IState> {
         } finally {
             hide();
         }
+
+        const RowRecord = Record({
+            itemId: null,
+            timestamp: null,
+            severityLevel: null,
+            itemType: null,
+            message:null,
+            fields: Map()
+
+        })
+
+        console.time();
         
-        const table = d.tables[0];
+        const table = fromJS(d.tables[0]);
+        const columns: List<Map<string,string>> = table.get("columns");
+        const rows: List<ILogRow> = table.get('rows').map((row: List<any>, index:number) => {
+
+            const fields = row.toOrderedMap().mapEntries((entry:any, index2:number) => {
+                // console.log("entrye", entry,index2);
+                return [columns.getIn([index2,"name"]), entry[1]];
+            });
+
+            return new RowRecord({
+                itemId: fields.get("itemId"),
+                timestamp: fields.get("timestamp"),
+                severityLevel: fields.get("severityLevel"),
+                itemType: fields.get("itemType"),
+                message: fields.get("message"),
+                fields
+            });
+        });
+
+        console.timeEnd();
+
         // table.rows = table.rows.map(row => {
         //     return row.map(value => {
         //         if (typeof value === "string") {
@@ -396,50 +426,48 @@ class App extends React.Component<{}, IState> {
         //     });
         // });
 
-        const rows = table.rows.map(r => {
-            return {
-                id: get("itemId", table, r),
-                loglevel: "info",
-                message: get("message", table, r),
-                timestamp: get("timestamp", table, r),
-                severityLevel: get("severityLevel", table, r),
-                itemType: get("itemType", table, r),
-                showDetails: this.handleShowDetails,
-                setGrep: this.handleSetGrep
-            }
-        })
+        // const rows = table.rows.map((r:any) => {
+        //     return {
+        //         id: get("itemId", table, r),
+        //         loglevel: "info",
+        //         message: get("message", table, r),
+        //         timestamp: get("timestamp", table, r),
+        //         severityLevel: get("severityLevel", table, r),
+        //         itemType: get("itemType", table, r),
+        //         showDetails: this.handleShowDetails,
+        //         setGrep: this.handleSetGrep
+        //     }
+        // })
 
         this.setState((ps) => {
-            return { ...ps, data: d, rows };
+            return { ...ps, rows };
         });
     }
 
 }
 
 interface ILogRow {
-    timestamp: string;
+    itemId:string,
+    timestamp: string,
+    severiLevel: number,
     message: string;
-    id: string;
-    severityLevel: number;
-    itemType: string;
+    itemType: string,
+    fields: Map<string,any>
     setGrep: (str: string) => void;
     showDetails: (row: ILogRow) => void;
 }
 
 interface IConsoleProps {
-    rows: ILogRow[]
+    rows: List<ILogRow>
 }
 
 class ConsoleView extends React.Component<IConsoleProps> {
 
     public render() {
-
-        
-
         return (            
-              <List currentLength={this.props.rows.length} pageSize={200} itemsRenderer={this.itemsRenderer}>
+            <DynamicList currentLength={this.props.rows.count()} pageSize={200} itemsRenderer={this.itemsRenderer}>
                 {this.itemRenderer}
-                </List>
+            </DynamicList>
         );
     }
 
@@ -449,26 +477,27 @@ class ConsoleView extends React.Component<IConsoleProps> {
         </div>
     );
 
-    private itemRenderer = (index:number, key:string) => <ConsoleRow key={key} {...this.props.rows[index]} />;
+    private itemRenderer = (index:number, key:string) => {
+    return <ConsoleRow key={key} row={this.props.rows.get(index)} />};
 }
 
-class ConsoleRow extends React.Component<ILogRow,any> {
+class ConsoleRow extends React.Component<{row: ILogRow},any> {
     /**
      *
      */
 
-    constructor(props: ILogRow) {
+    constructor(props:any) {
         super(props);
     }
     
     public render() {
-
-        const severityLevel = translateSeverityLevel(this.props.severityLevel);
+        const row = this.props.row;
+        const severityLevel = translateSeverityLevel(row.severiLevel);
 
         const regexp = /\B(#[a-zA-Z0-9-]+\b|#"[a-zA-Z0-9- ]+["|\b])(?!;)/gu;
 
-        const msg = reactreplace(this.props.message, regexp, (match: string, i: number) => {
-            const grep = () => { this.props.setGrep(match); }
+        const msg = reactreplace(row.message, regexp, (match: string, i: number) => {
+            const grep = () => { row.setGrep(match); }
             return <span className="hashtag" key={i} onClick={grep}>{match}</span>
         });
 
@@ -476,16 +505,15 @@ class ConsoleRow extends React.Component<ILogRow,any> {
         //     'ctrl+enter': this.setGrep
         // };
 
-        console.log("render");
 
         return (
-                <div className="consoleRow" key={this.props.id}>
-                    <div className="id">{this.props.id}</div>
-                    <div className="timestamp">{this.props.timestamp}</div>
+                <div className="consoleRow" key={row.itemId}>
+                    <div className="id">{row.itemId}</div>
+                    <div className="timestamp">{row.timestamp}</div>
                     <Icon className="details" type="message" onClick={this.showDetails} />
                     <div className={"loglevel " + severityLevel}>{severityLevel}</div>
                     <div className="message">{msg}</div>
-                    <div className="itemType">{this.props.itemType}</div>
+                    <div className="itemType">{row.itemType}</div>
                 </div>
         )
     }
@@ -499,7 +527,7 @@ class ConsoleRow extends React.Component<ILogRow,any> {
     // }
 
     private showDetails = () => {
-        this.props.showDetails(this.props);
+        this.props.row.showDetails(this.props.row);
     }
 }
 

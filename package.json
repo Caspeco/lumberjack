@@ -6,6 +6,7 @@
     "@researchgate/react-intersection-list": "^1.0.2",
     "@researchgate/react-intersection-observer": "^0.6.1",
     "antd": "^3.4.1",
+    "immutable": "^3.8.2",
     "moment": "^2.22.1",
     "moment-json-parser": "^0.9.1",
     "react": "^16.3.2",
