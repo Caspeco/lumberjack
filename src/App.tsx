@@ -139,6 +139,23 @@ const map = {
     'refresh': 'enter'
 };
 
+function debounce(func:any, wait:any, immediate:any) {
+	let timeout:any;
+	return function() {
+        // @ts-ignore
+        var context:any = this;
+        var args = arguments;
+		var later = function() {
+			timeout = null;
+			if (!immediate) func.apply(context, args);
+		};
+		var callNow = immediate && !timeout;
+		clearTimeout(timeout);
+		timeout = setTimeout(later, wait);
+		if (callNow) func.apply(context, args);
+	};
+};
+
 class App extends React.Component<{}, IState> {
 
     /**
@@ -175,18 +192,26 @@ class App extends React.Component<{}, IState> {
             showDetails: null
         }
         
+        let cachedRows = List();
         worker.onmessage = (event:any) => {
             console.time("des");
             var x = transit.fromJSON(event.data);
             console.timeEnd("des");
-            this.setState((ps) => {
-                const r = ps.rows.concat(x).toList();
-                return { ...ps, rows: r };
-            });
+            
+            cachedRows = cachedRows.concat(x).toList();
+            this.setit(cachedRows);
+            
         };
 
 
     }
+
+    private setit:any = debounce((x:any) => {
+        this.setState((ps) => {
+            const r = ps.rows.concat(x).toList();
+            return { ...ps, rows: r };
+        });
+    },100,false);
 
 
     public async componentDidMount() {
