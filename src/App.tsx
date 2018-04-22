@@ -1,3 +1,4 @@
+/* tslint:disable */
 import { Select, message, Modal, Icon, DatePicker, Button, Input, Tooltip } from 'antd';
 import momentjson from 'moment-json-parser';
 const RangePicker = DatePicker.RangePicker;
@@ -9,9 +10,20 @@ import { HotKeys } from 'react-hotkeys';
 import './App.css';
 // import Observer from '@researchgate/react-intersection-observer';
 import DynamicList from '@researchgate/react-intersection-list';
-import { fromJS, List, Record,Map } from "immutable";
+import { List,Map } from "immutable";
+import Worker from 'worker-loader!./worker.js';
+import transit from 'transit-immutable-js';
 
-momentjson.overrideDefault();
+const worker = new Worker();
+
+// worker.postMessage({ a: 1 });
+
+
+// worker.addEventListener("message", (event:any) => {
+//     console.log("event2",event);
+// });
+
+//momentjson.overrideDefault();
 
 // import logo from './logo.svg';
 
@@ -144,7 +156,7 @@ class App extends React.Component<{}, IState> {
             },
             grep: "",
             severityLevel: [0, 1, 2, 3],
-            ...JSON.parse(localStorage.getItem("query") as string)
+            ...momentjson(localStorage.getItem("query") as string)
         };
 
         const settings = JSON.parse(localStorage.getItem("settings") as string) || {
@@ -162,6 +174,16 @@ class App extends React.Component<{}, IState> {
             loading: false,
             showDetails: null
         }
+        
+        worker.onmessage = (event:any) => {
+            console.time("des");
+            var x = transit.fromJSON(event.data);
+            console.timeEnd("des");
+            this.setState((ps) => {
+                const r = ps.rows.concat(x).toList();
+                return { ...ps, rows: r };
+            });
+        };
 
 
     }
@@ -381,36 +403,38 @@ class App extends React.Component<{}, IState> {
             hide();
         }
 
-        const RowRecord = Record({
-            itemId: null,
-            timestamp: null,
-            severityLevel: null,
-            itemType: null,
-            message:null,
-            fields: Map()
+        worker.postMessage(d);
 
-        })
+        // const RowRecord = Record({
+        //     itemId: null,
+        //     timestamp: null,
+        //     severityLevel: null,
+        //     itemType: null,
+        //     message:null,
+        //     fields: Map()
 
-        console.time();
+        // })
+
+        // console.time();
         
-        const table = fromJS(d.tables[0]);
-        const columns: List<Map<string,string>> = table.get("columns");
-        const rows: List<ILogRow> = table.get('rows').map((row: List<any>, index:number) => {
+        // const table = fromJS(d.tables[0]);
+        // const columns: List<Map<string,string>> = table.get("columns");
+        // const rows: List<ILogRow> = table.get('rows').map((row: List<any>, index:number) => {
 
-            const fields = row.toOrderedMap().mapEntries((entry:any, index2:number) => {
-                // console.log("entrye", entry,index2);
-                return [columns.getIn([index2,"name"]), entry[1]];
-            });
+        //     const fields = row.toOrderedMap().mapEntries((entry:any, index2:number) => {
+        //         // console.log("entrye", entry,index2);
+        //         return [columns.getIn([index2,"name"]), entry[1]];
+        //     });
 
-            return new RowRecord({
-                itemId: fields.get("itemId"),
-                timestamp: fields.get("timestamp"),
-                severityLevel: fields.get("severityLevel"),
-                itemType: fields.get("itemType"),
-                message: fields.get("message"),
-                fields
-            });
-        });
+        //     return new RowRecord({
+        //         itemId: fields.get("itemId"),
+        //         timestamp: fields.get("timestamp"),
+        //         severityLevel: fields.get("severityLevel"),
+        //         itemType: fields.get("itemType"),
+        //         message: fields.get("message"),
+        //         fields
+        //     });
+        // });
 
         console.timeEnd();
 
@@ -439,9 +463,9 @@ class App extends React.Component<{}, IState> {
         //     }
         // })
 
-        this.setState((ps) => {
-            return { ...ps, rows };
-        });
+        // this.setState((ps) => {
+        //     return { ...ps, rows };
+        // });
     }
 
 }
@@ -461,14 +485,43 @@ interface IConsoleProps {
     rows: List<ILogRow>
 }
 
-class ConsoleView extends React.Component<IConsoleProps> {
+class ConsoleView extends React.Component<IConsoleProps,any> {
+
+    /**
+     *
+     */
+    constructor(props:any) {
+        super(props);
+        this.state = {
+            rowsToRender: this.props.rows.take(ConsoleView.pageSize * 2)
+        }
+    }
+
+    static pageSize: number = 50;
+
+    static getDerivedStateFromProps(props:any, ps:any) {
+        if(ps.rowsToRender.count()){
+            return null;
+        }else {
+            return { rowsToRender: props.rows.take(ConsoleView.pageSize * 2) }
+        }
+    }
+
 
     public render() {
+        console.log("render", this.state.rowsToRender.count() || this.props.rows.count());
         return (            
-            <DynamicList currentLength={this.props.rows.count()} pageSize={200} itemsRenderer={this.itemsRenderer}>
+            <DynamicList currentLength={this.state.rowsToRender.count() || this.props.rows.count()} pageSize={ConsoleView.pageSize} awaitMore={true} itemsRenderer={this.itemsRenderer} onIntersection={this.intersect}>
                 {this.itemRenderer}
             </DynamicList>
         );
+    }
+
+    private intersect = (size:number, pageSize: number) => {
+        console.log("add rows", size, pageSize);
+        this.setState(() => {
+            return {rowsToRender: this.props.rows.take(size +   ConsoleView.pageSize * 2)};
+        });
     }
 
     private itemsRenderer = (items:any, ref:any) => (
@@ -478,7 +531,8 @@ class ConsoleView extends React.Component<IConsoleProps> {
     );
 
     private itemRenderer = (index:number, key:string) => {
-    return <ConsoleRow key={key} row={this.props.rows.get(index)} />};
+        return <ConsoleRow key={key} row={this.props.rows.get(index)} />
+    };
 }
 
 class ConsoleRow extends React.Component<{row: ILogRow},any> {
@@ -491,12 +545,12 @@ class ConsoleRow extends React.Component<{row: ILogRow},any> {
     }
     
     public render() {
-        const row = this.props.row;
-        const severityLevel = translateSeverityLevel(row.severiLevel);
+        const row: any = this.props.row;
+        const severityLevel = translateSeverityLevel(row.get("severityLevel"));
 
         const regexp = /\B(#[a-zA-Z0-9-]+\b|#"[a-zA-Z0-9- ]+["|\b])(?!;)/gu;
 
-        const msg = reactreplace(row.message, regexp, (match: string, i: number) => {
+        const msg = reactreplace(row.get("message"), regexp, (match: string, i: number) => {
             const grep = () => { row.setGrep(match); }
             return <span className="hashtag" key={i} onClick={grep}>{match}</span>
         });
@@ -504,16 +558,17 @@ class ConsoleRow extends React.Component<{row: ILogRow},any> {
         // const handlers = {
         //     'ctrl+enter': this.setGrep
         // };
-
+        const r: any = row;
+        //console.log("Render?", r.toJS());
 
         return (
-                <div className="consoleRow" key={row.itemId}>
-                    <div className="id">{row.itemId}</div>
-                    <div className="timestamp">{row.timestamp}</div>
+                <div className="consoleRow" key={r.get("itemId")}>
+                    <div className="id">{r.get("itemId")}</div>
+                    <div className="timestamp">{r.get("timestamp")}</div>
                     <Icon className="details" type="message" onClick={this.showDetails} />
                     <div className={"loglevel " + severityLevel}>{severityLevel}</div>
                     <div className="message">{msg}</div>
-                    <div className="itemType">{row.itemType}</div>
+                    <div className="itemType">{r.get("itemType")}</div>
                 </div>
         )
     }
