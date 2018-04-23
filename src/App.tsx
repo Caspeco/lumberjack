@@ -10,11 +10,14 @@ import { HotKeys } from 'react-hotkeys';
 import './App.css';
 // import Observer from '@researchgate/react-intersection-observer';
 import DynamicList from '@researchgate/react-intersection-list';
-import { List, Map } from "immutable";
+import { List } from "immutable";
 import Worker from 'worker-loader!./worker.js';
 import transit from 'transit-immutable-js';
 import { Provider, Subscribe, Container } from 'unstated';
-
+// if (process.env.NODE_ENV !== 'production') {
+//     const {whyDidYouUpdate} = require('why-did-you-update');
+//     whyDidYouUpdate(React);
+//   }
 const worker = new Worker();
 
 // worker.postMessage({ a: 1 });
@@ -44,14 +47,15 @@ class LogContainer extends Container<ILogState> {
         //     const allRows = state.rows.concat(rows).toList();
         //     return { rows: allRows }
         // })
+        console.log("adding", rows);
         this.pendingChanges = this.pendingChanges.concat(rows).toList();
         this.throttleAdd();
     }
 
     set = (rows: List<any>) => {
-        console.log("set");
+        console.log("set",rows);
         this.pendingSet = rows;
-        this.debounceSet();
+        this.innerSet();
     }
 
     innerAdd = () => {
@@ -66,12 +70,12 @@ class LogContainer extends Container<ILogState> {
         console.log("inner set");
         this.setState(() => {
             return { rows: this.pendingSet }
-        }, () => {console.log("done set", this.state)});
+        });
     }
 
     debounceSet = debounce(this.innerSet,100,true);
     // debounceAdd = debounce(this.innerAdd,100,true);
-    throttleAdd = throttle(this.innerAdd,100);
+    throttleAdd = throttle(this.innerAdd,1000);
 }
 let logContainer = new LogContainer();
 
@@ -151,7 +155,7 @@ async function async_fetch_data(appId: string, appKey: string, query: IQueryObje
     | project-rename message = message2
     | where message contains "${escapeai(query.grep)}"
     | ${severityLevel}
-    | order by timestamp ${query.orderBy}
+    | order by timestamp ${query.orderBy}, itemId desc
     `;
 
 
@@ -334,7 +338,7 @@ class App extends React.Component<{}, IState> {
                             </Tooltip>
                         </header>
 
-                        <ConsoleView rows={lc.state.rows} />
+                        <ConsoleView rows={lc.state.rows} setGrep={this.handleSetGrep} showDetails={this.handleShowDetails} />
                         <Modal
                             title="Basic Modal"
                             visible={this.state.showSettings}
@@ -422,11 +426,11 @@ class App extends React.Component<{}, IState> {
         });
     }
 
-    // private handleSetGrep = (str: string) => {
-    //     this.setState((ps) => {
-    //         return { query: { ...ps.query, grep: str } }
-    //     }, this.getData);
-    // }
+    private handleSetGrep = (str: string) => {
+        this.setState((ps) => {
+            return { query: { ...ps.query, grep: str } }
+        }, this.getData);
+    }
 
     private handleRefresh = async (e?: any) => {
 
@@ -437,50 +441,49 @@ class App extends React.Component<{}, IState> {
         await this.getData();
     }
 
-    // private handleShowDetails = (r: any) => {
-    //     const table = this.state.data.tables[0];
-    //     const rows: any[] = table.rows
-    //     // console.log(rows);
-    //     const original = rows.find(x => get("itemId", table, x) === r.id);
-    //     // console.log(original);
-    //     // console.log(table);
-    //     // construct obj with keys
-    //     const obj = {};
-    //     original.forEach((element: any[], index: number) => {
-    //         // console.log(element,index, table.columns[index]);
-    //         if (element) {
-    //             obj[table.columns[index].name] = element;
-    //         }
-    //     });
+    private handleShowDetails = (r: any) => {
+        // const table = this.state.data.tables[0];
+        // const rows: any[] = table.rows
+        // // console.log(rows);
+        // const original = rows.find(x => get("itemId", table, x) === r.id);
+        // // console.log(original);
+        // // console.log(table);
+        // // construct obj with keys
+        // const obj = {};
+        // original.forEach((element: any[], index: number) => {
+        //     // console.log(element,index, table.columns[index]);
+        //     if (element) {
+        //         obj[table.columns[index].name] = element;
+        //     }
+        // });
+        const obj = r.toJS();
+        Modal.info({
+            title: 'Details',
+            content: (
+                <div>
+                    <pre>{JSON.stringify(obj, (k, v) => {
 
-    //     console.log(obj);
-    //     Modal.info({
-    //         title: 'Details',
-    //         content: (
-    //             <div>
-    //                 <pre>{JSON.stringify(obj, (k, v) => {
-    //                     if (v === null || v === "") {
-    //                         return undefined
-    //                     } else if (typeof v === "string") {
-    //                         // JSON parse inner values,
-    //                         if (v[0] === "[" || v[0] === "{") {
-    //                             return JSON.parse(v);
-    //                         }
-    //                     }
+                        if (v === null || v === "") {
+                            return undefined
+                        // } else if (typeof v === "string" && (v.indexOf("[") === 1 || v.indexOf("{") === 1)) {
+                        //     console.warn("ye", v);
+                        //     return JSON.stringify(v, null, 2);
+                        }
 
-    //                     console.log(v, typeof v);
+                        //console.log(v, typeof v);
 
-    //                     return v;
-    //                 }, 2)}</pre>
-    //             </div>
-    //         ),
-    //         width: "80%"
-    //     });
+                        return v;
+                    }, 2)}</pre>
+                </div>
+            ),
+            width: "80%"
+        });
 
-    //     this.setState({
-    //         showDetails: r
-    //     })
-    // }
+        this.setState({
+            showDetails: r
+        })
+}
+
 
     private async getData() {
 
@@ -503,86 +506,21 @@ class App extends React.Component<{}, IState> {
             hide();
         }
 
-        worker.postMessage(d);
-
-        // const RowRecord = Record({
-        //     itemId: null,
-        //     timestamp: null,
-        //     severityLevel: null,
-        //     itemType: null,
-        //     message:null,
-        //     fields: Map()
-
-        // })
-
-        // console.time();
-
-        // const table = fromJS(d.tables[0]);
-        // const columns: List<Map<string,string>> = table.get("columns");
-        // const rows: List<ILogRow> = table.get('rows').map((row: List<any>, index:number) => {
-
-        //     const fields = row.toOrderedMap().mapEntries((entry:any, index2:number) => {
-        //         // console.log("entrye", entry,index2);
-        //         return [columns.getIn([index2,"name"]), entry[1]];
-        //     });
-
-        //     return new RowRecord({
-        //         itemId: fields.get("itemId"),
-        //         timestamp: fields.get("timestamp"),
-        //         severityLevel: fields.get("severityLevel"),
-        //         itemType: fields.get("itemType"),
-        //         message: fields.get("message"),
-        //         fields
-        //     });
-        // });
-
+        worker.postMessage({ topic: "json", payload: d});
         console.timeEnd();
-
-        // table.rows = table.rows.map(row => {
-        //     return row.map(value => {
-        //         if (typeof value === "string") {
-        //             // JSON parse inner values,
-        //             if (value[0] === "[" || value[0] === "{") {
-        //                 return JSON.parse(value);
-        //             }
-        //         }
-        //         return value;
-        //     });
-        // });
-
-        // const rows = table.rows.map((r:any) => {
-        //     return {
-        //         id: get("itemId", table, r),
-        //         loglevel: "info",
-        //         message: get("message", table, r),
-        //         timestamp: get("timestamp", table, r),
-        //         severityLevel: get("severityLevel", table, r),
-        //         itemType: get("itemType", table, r),
-        //         showDetails: this.handleShowDetails,
-        //         setGrep: this.handleSetGrep
-        //     }
-        // })
-
-        // this.setState((ps) => {
-        //     return { ...ps, rows };
-        // });
     }
 
 }
 
-interface ILogRow {
-    itemId: string,
-    timestamp: string,
-    severiLevel: number,
-    message: string;
-    itemType: string,
-    fields: Map<string, any>
+interface ILogRow {    
     setGrep: (str: string) => void;
     showDetails: (row: ILogRow) => void;
 }
 
 interface IConsoleProps {
-    rows: List<ILogRow>
+    rows: List<ILogRow>,
+    setGrep: (str: string) => void;
+    showDetails: (row: ILogRow) => void;
 }
 
 class ConsoleView extends React.Component<IConsoleProps, any> {
@@ -609,16 +547,20 @@ class ConsoleView extends React.Component<IConsoleProps, any> {
 
 
     public render() {
-        //console.log("render", this.state.rowsToRender.count() || this.props.rows.count());
+        // console.log("render rows count", this.props.rows.count());
         return (            
-                <DynamicList currentLength={this.props.rows.take(this.state.rowsToRender).count()} pageSize={ConsoleView.pageSize} awaitMore={true} itemsRenderer={this.itemsRenderer} onIntersection={this.intersect}>
+                <DynamicList currentLength={this.props.rows.count()} threshold={"25%"} pageSize={ConsoleView.pageSize} awaitMore={true} itemsRenderer={this.itemsRenderer} onIntersection={this.intersect}>
                     {this.itemRenderer}
                 </DynamicList>            
         );
     }
 
     private intersect = (size: number, pageSize: number) => {
-        console.log("add rows", size, pageSize);
+        console.log("Intersect event:", size, pageSize);
+        worker.postMessage({topic: "loadmore", payload: {
+            skip: size,
+            take: pageSize}
+        });
         this.setState(() => {
              return { rowsToRender: size + pageSize };
         });
@@ -634,14 +576,20 @@ class ConsoleView extends React.Component<IConsoleProps, any> {
         return (
             <Subscribe to={[LogContainer]} key={key}>
                 {c => (
-                    <ConsoleRow row={c.state.rows.get(index)} />
+                    <ConsoleRow row={c.state.rows.get(index)} setGrep={this.props.setGrep} showDetails={this.props.showDetails} />
                 )}
             </Subscribe>
         );
     };
 }
 
-class ConsoleRow extends React.Component<{ row: ILogRow }, any> {
+interface IConsoleRowProps {
+    row: any;
+    setGrep: (str: string) => void;
+    showDetails: (row: ILogRow) => void;
+}
+
+class ConsoleRow extends React.Component<IConsoleRowProps, any> {
     /**
      *
      */
@@ -669,7 +617,7 @@ class ConsoleRow extends React.Component<{ row: ILogRow }, any> {
         const regexp = /\B(#[a-zA-Z0-9-]+\b|#"[a-zA-Z0-9- ]+["|\b])(?!;)/gu;
 
         const msg = reactreplace(row.get("message"), regexp, (match: string, i: number) => {
-            const grep = () => { row.setGrep(match); }
+            const grep = () => { this.props.setGrep(match); }
             return <span className="hashtag" key={i} onClick={grep}>{match}</span>
         });
 
@@ -700,7 +648,7 @@ class ConsoleRow extends React.Component<{ row: ILogRow }, any> {
     // }
 
     private showDetails = () => {
-        this.props.row.showDetails(this.props.row);
+        this.props.showDetails(this.props.row);
     }
 }
 
