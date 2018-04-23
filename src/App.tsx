@@ -10,7 +10,7 @@ import { HotKeys } from 'react-hotkeys';
 import './App.css';
 // import Observer from '@researchgate/react-intersection-observer';
 import DynamicList from '@researchgate/react-intersection-list';
-import { List } from "immutable";
+import { List, fromJS, Map } from "immutable";
 import Worker from 'worker-loader!./worker.js';
 import transit from 'transit-immutable-js';
 import { Provider, Subscribe, Container } from 'unstated';
@@ -151,7 +151,7 @@ async function async_fetch_data(appId: string, appKey: string, query: IQueryObje
     | union (
         traces
         | project-rename ["message2"] = message)
-    | where timestamp between(datetime(${query.timeRange.from.utc().format("YYYY-MM-DD HH:mm:ss")}) .. datetime(${query.timeRange.to.utc().format("YYYY-MM-DD HH:mm:ss")}))
+    | where timestamp between(datetime(${query.timeRange.from.format("YYYY-MM-DD HH:mm:ss")}) .. datetime(${query.timeRange.to.format("YYYY-MM-DD HH:mm:ss")}))
     | project-away message 
     | project-rename message = message2
     | where message contains "${escapeai(query.grep)}"
@@ -200,6 +200,7 @@ interface IState {
     rows: List<ILogRow>
     search: string
     query: IQueryObject;
+    lastQuery: Map<any,any>;
     settings: ISettings;
     showSettings: boolean;
     loading: boolean;
@@ -244,8 +245,8 @@ class App extends React.Component<{}, IState> {
             orderBy: "desc",
             source: "traces",
             timeRange: {
-                from: moment().subtract(1, "h"),
-                to: moment()
+                from: moment().utc().subtract(1, "h"),
+                to: moment().utc()
             },
             grep: "",
             severityLevel: [0, 1, 2, 3],
@@ -262,6 +263,7 @@ class App extends React.Component<{}, IState> {
             rows: List(),
             search: "",
             query,
+            lastQuery: Map(),
             settings,
             showSettings: false,
             loading: false,
@@ -303,6 +305,8 @@ class App extends React.Component<{}, IState> {
                 <Option value="asc"><Icon type="arrow-up" /></Option>
             </Select>);
 
+        const hasNewQuery = !this.state.lastQuery.equals(fromJS(this.state.query));
+
         return (
             <Provider inject={[logContainer]}>
                 <Subscribe to={[LogContainer]}>
@@ -320,12 +324,12 @@ class App extends React.Component<{}, IState> {
                                     defaultValue={[this.state.query.timeRange.from, this.state.query.timeRange.to]}
                                     ranges={
                                         {
-                                            'Last 30m': [moment().subtract(30, "m"), moment()],
-                                            'Last 60m': [moment().subtract(60, "m"), moment()],
-                                            'Last 2h': [moment().subtract(2, "h"), moment()],
-                                            'Last 8h': [moment().subtract(8, "h"), moment()],
-                                            'Today': [moment().startOf('day'), moment().endOf('day')],
-                                            'This Month': [moment().startOf('month'), moment().endOf('month')]
+                                            'Last 30m': [moment().utc().subtract(30, "m"), moment().utc()],
+                                            'Last 60m': [moment().utc().subtract(60, "m"), moment().utc()],
+                                            'Last 2h': [moment().utc().subtract(2, "h"), moment().utc()],
+                                            'Last 8h': [moment().utc().subtract(8, "h"), moment().utc()],
+                                            'Today': [moment().utc().startOf('day'), moment().endOf('day').utc()],
+                                            'This Month': [moment().utc().startOf('month'), moment().endOf('month').utc()]
                                         }}
                                     showTime
                                     format="YYYY-MM-DD HH:mm:ss"
@@ -334,7 +338,7 @@ class App extends React.Component<{}, IState> {
                                 <Button onClick={this.handleShowSettings}>Settings</Button>
                             </div>
                             <Tooltip placement="left" title="(Enter)">
-                                <Button type="primary" className="refreshbtn" onClick={this.handleRefresh}>Refresh</Button>
+                                <Button type={hasNewQuery ? "primary" : "dashed"} className="refreshbtn" onClick={this.handleRefresh}>Refresh</Button>
                             </Tooltip>
                         </header>
 
@@ -491,6 +495,10 @@ class App extends React.Component<{}, IState> {
         // save query to storage
         localStorage.setItem("query", JSON.stringify(this.state.query));
 
+        this.setState({
+            lastQuery: fromJS(this.state.query)
+        });
+
         let d: InsightsResponse
         try {
             d = await async_fetch_data(this.state.settings.apiId, this.state.settings.apiKey, this.state.query);
@@ -530,30 +538,9 @@ class ConsoleView extends React.Component<IConsoleProps, any> {
      */
     constructor(props: any) {
         super(props);
-        // this.state = {
-        //     rowsToRender: props.rows.count(),
-        //     rows: props.rows
-        // }
     }
 
     static pageSize: number = 50;
-
-    // static getDerivedStateFromProps(props: any, ps: any) {
-    //     if(!props.rows.equals(ps.rows)) {
-    //         console.log("same")
-    //     } else {
-    //         return {
-    //             rows: props.rows,
-    //             rowsToRender: ps.rows.count()
-    //         }
-    //     }
-
-    //     if (ps.rowsToRender.count()) {
-    //         return null;
-    //     } else {
-    //         return { rowsToRender: props.rows.take(ConsoleView.pageSize) }
-    //     }
-    // }
 
     public render() {
         console.log("render rows count", this.props.rows.count());   
@@ -606,13 +593,8 @@ class ConsoleRow extends React.Component<IConsoleRowProps, any> {
 
     shouldComponentUpdate(nextProps:any, nextState:any) {
         if(!nextProps.row.equals(this.props.row)) {
-            // console.warn("scu", true);
-
             return true;
         }
-        // console.log("scu", false);
-        
-
         return false;
     }
 
@@ -636,7 +618,7 @@ class ConsoleRow extends React.Component<IConsoleRowProps, any> {
         return (
             <div className="consoleRow" key={r.get("itemId")}>
                 <div className="id">{r.get("itemId")}</div>
-                <div className="timestamp">{r.get("timestamp")}</div>
+                <div className="timestamp">{moment(r.get("timestamp")).format("YYYY-MM-DD HH:mm:ss:SSS")}</div>
                 <Icon className="details" type="message" onClick={this.showDetails} />
                 <div className={"loglevel " + severityLevel}>{severityLevel}</div>
                 <div className="message">{msg}</div>
