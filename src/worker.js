@@ -36,11 +36,11 @@ function sendFirstBatch() {
 
 function sendBatch(skip, take, isNew) {
     const rows = parsedRows.skip(skip).take(take);
-    console.log("worker: Sending batch", skip, take, " resulted in ", rows.count());
-    if(rows.count() === 0 && !isNew) {
-        console.log("worker: aborted 'con' sendBatch because we are empty");
-        return;
-    }
+    console.log("worker: Sending batch", skip, take, " resulted in ", rows.count(), " (in total ", parsedRows.count(), ")");
+    // if(rows.count() === 0 && !isNew) {
+    //     console.log("worker: aborted 'con' sendBatch because we are empty");
+    //     return;
+    // }
     const json = transit.toJSON(rows);
     postMessage({ topic: isNew ? "new" : "con", payload: json });
 

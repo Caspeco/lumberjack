@@ -68,6 +68,7 @@
   max-width: 100vw;
   padding-top: 20px;
   flex: 1 1 auto;
+  min-height:100%;
 }
 
 .consoleRow {

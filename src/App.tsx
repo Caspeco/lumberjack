@@ -47,14 +47,16 @@ class LogContainer extends Container<ILogState> {
         //     const allRows = state.rows.concat(rows).toList();
         //     return { rows: allRows }
         // })
-        console.log("adding", rows);
+        console.log("adding new", rows.count());
         this.pendingChanges = this.pendingChanges.concat(rows).toList();
-        this.throttleAdd();
+        console.log("pending changes", this.pendingChanges.count());
+        this.innerAdd();
     }
 
     set = (rows: List<any>) => {
         console.log("set",rows);
         this.pendingSet = rows;
+        this.pendingChanges = this.pendingChanges.clear();
         this.innerSet();
     }
 
@@ -62,7 +64,7 @@ class LogContainer extends Container<ILogState> {
         this.setState((s) => {
             return { rows: s.rows.concat(this.pendingChanges).toList() }
         }
-        //, () => {console.warn("done add", this.state)}
+        , () => {console.warn("done add", this.state); this.pendingChanges = this.pendingChanges.clear();}
         );
     }
 
@@ -73,35 +75,34 @@ class LogContainer extends Container<ILogState> {
         });
     }
 
-    debounceSet = debounce(this.innerSet,100,true);
+    // debounceSet = debounce(this.innerSet,100,true);
     // debounceAdd = debounce(this.innerAdd,100,true);
-    throttleAdd = throttle(this.innerAdd,1000);
+    // throttleAdd = throttle(this.innerAdd,1000);
 }
 let logContainer = new LogContainer();
 
-function throttle(fn:any, threshhold:number, scope?:any) {
-    threshhold || (threshhold = 250);
-    let last:any,
-        deferTimer:any;
-    return function () {
-        // @ts-ignore
-      var context = scope || this;
+// function throttle(fn:any, threshhold:number, scope?:any) {
+//     threshhold || (threshhold = 250);
+//     let last:any,
+//         deferTimer:any;
+//     return function () {
+//       var context = scope || this;
   
-      var now = +new Date,
-          args = arguments;
-      if (last && now < last + threshhold) {
-        // hold on to it
-        clearTimeout(deferTimer);
-        deferTimer = setTimeout(function () {
-          last = now;
-          fn.apply(context, args);
-        }, threshhold);
-      } else {
-        last = now;
-        fn.apply(context, args);
-      }
-    };
-  }
+//       var now = +new Date,
+//           args = arguments;
+//       if (last && now < last + threshhold) {
+//         // hold on to it
+//         clearTimeout(deferTimer);
+//         deferTimer = setTimeout(function () {
+//           last = now;
+//           fn.apply(context, args);
+//         }, threshhold);
+//       } else {
+//         last = now;
+//         fn.apply(context, args);
+//       }
+//     };
+//   }
 
 
 const API_BASE = "https://api.applicationinsights.io/v1/apps/";
@@ -215,22 +216,21 @@ const map = {
     'refresh': 'enter'
 };
 
-function debounce(func: any, wait: any, immediate: any) {
-    let timeout: any;
-    return function () {
-        // @ts-ignore
-        var context: any = this;
-        var args = arguments;
-        var later = function () {
-            timeout = null;
-            if (!immediate) func.apply(context, args);
-        };
-        var callNow = immediate && !timeout;
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-        if (callNow) func.apply(context, args);
-    };
-};
+// function debounce(func: any, wait: any, immediate: any) {
+//     let timeout: any;
+//     return function () {
+//         var context: any = this;
+//         var args = arguments;
+//         var later = function () {
+//             timeout = null;
+//             if (!immediate) func.apply(context, args);
+//         };
+//         var callNow = immediate && !timeout;
+//         clearTimeout(timeout);
+//         timeout = setTimeout(later, wait);
+//         if (callNow) func.apply(context, args);
+//     };
+// };
 
 class App extends React.Component<{}, IState> {
 
@@ -530,14 +530,24 @@ class ConsoleView extends React.Component<IConsoleProps, any> {
      */
     constructor(props: any) {
         super(props);
-        this.state = {
-            rowsToRender: ConsoleView.pageSize
-        }
+        // this.state = {
+        //     rowsToRender: props.rows.count(),
+        //     rows: props.rows
+        // }
     }
 
     static pageSize: number = 50;
 
     // static getDerivedStateFromProps(props: any, ps: any) {
+    //     if(!props.rows.equals(ps.rows)) {
+    //         console.log("same")
+    //     } else {
+    //         return {
+    //             rows: props.rows,
+    //             rowsToRender: ps.rows.count()
+    //         }
+    //     }
+
     //     if (ps.rowsToRender.count()) {
     //         return null;
     //     } else {
@@ -545,11 +555,11 @@ class ConsoleView extends React.Component<IConsoleProps, any> {
     //     }
     // }
 
-
     public render() {
-        // console.log("render rows count", this.props.rows.count());
-        return (            
-                <DynamicList currentLength={this.props.rows.count()} threshold={"25%"} pageSize={ConsoleView.pageSize} awaitMore={true} itemsRenderer={this.itemsRenderer} onIntersection={this.intersect}>
+        console.log("render rows count", this.props.rows.count());   
+        return (
+            this.props.rows.isEmpty() ? <div className="consoleView">No entries...</div>: 
+                <DynamicList rows={this.props.rows} currentLength={this.props.rows.count()} threshold={"25%"} pageSize={ConsoleView.pageSize} awaitMore={true} itemsRenderer={this.itemsRenderer} onIntersection={this.intersect}>
                     {this.itemRenderer}
                 </DynamicList>            
         );
@@ -574,11 +584,7 @@ class ConsoleView extends React.Component<IConsoleProps, any> {
 
     private itemRenderer = (index: number, key: string) => {
         return (
-            <Subscribe to={[LogContainer]} key={key}>
-                {c => (
-                    <ConsoleRow row={c.state.rows.get(index)} setGrep={this.props.setGrep} showDetails={this.props.showDetails} />
-                )}
-            </Subscribe>
+            <ConsoleRow row={logContainer.state.rows.get(index)} key={key} setGrep={this.props.setGrep} showDetails={this.props.showDetails} />            
         );
     };
 }
