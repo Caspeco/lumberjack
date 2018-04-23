@@ -10,9 +10,10 @@ import { HotKeys } from 'react-hotkeys';
 import './App.css';
 // import Observer from '@researchgate/react-intersection-observer';
 import DynamicList from '@researchgate/react-intersection-list';
-import { List,Map } from "immutable";
+import { List, Map } from "immutable";
 import Worker from 'worker-loader!./worker.js';
 import transit from 'transit-immutable-js';
+import { Provider, Subscribe, Container } from 'unstated';
 
 const worker = new Worker();
 
@@ -26,6 +27,29 @@ const worker = new Worker();
 //momentjson.overrideDefault();
 
 // import logo from './logo.svg';
+type ILogState = {
+    rows: List<any>;
+};
+
+class LogContainer extends Container<ILogState> {
+    state = {
+        rows: List(),
+    };
+
+    add = (rows: List<any>) => {
+        this.setState((state: ILogState) => {
+            const allRows = state.rows.concat(rows).toList();
+            return { rows: allRows }
+        })
+    }
+
+    set = (rows: List<any>) => {
+        this.setState(() => {
+            return { rows }
+        })
+    }
+}
+let logContainer = new LogContainer();
 
 
 const API_BASE = "https://api.applicationinsights.io/v1/apps/";
@@ -139,22 +163,22 @@ const map = {
     'refresh': 'enter'
 };
 
-function debounce(func:any, wait:any, immediate:any) {
-	let timeout:any;
-	return function() {
-        // @ts-ignore
-        var context:any = this;
-        var args = arguments;
-		var later = function() {
-			timeout = null;
-			if (!immediate) func.apply(context, args);
-		};
-		var callNow = immediate && !timeout;
-		clearTimeout(timeout);
-		timeout = setTimeout(later, wait);
-		if (callNow) func.apply(context, args);
-	};
-};
+// function debounce(func: any, wait: any, immediate: any) {
+//     let timeout: any;
+//     return function () {
+//         // @ts-ignore
+//         var context: any = this;
+//         var args = arguments;
+//         var later = function () {
+//             timeout = null;
+//             if (!immediate) func.apply(context, args);
+//         };
+//         var callNow = immediate && !timeout;
+//         clearTimeout(timeout);
+//         timeout = setTimeout(later, wait);
+//         if (callNow) func.apply(context, args);
+//     };
+// };
 
 class App extends React.Component<{}, IState> {
 
@@ -191,27 +215,32 @@ class App extends React.Component<{}, IState> {
             loading: false,
             showDetails: null
         }
-        
-        let cachedRows = List();
-        worker.onmessage = (event:any) => {
+
+        //let cachedRows = List();
+        worker.onmessage = (event: any) => {
             console.time("des");
-            var x = transit.fromJSON(event.data);
+            const x = transit.fromJSON(event.data.payload);
+            if (event.data.topic === "first") {
+                logContainer.set(x);
+            } else {
+                logContainer.add(x);
+            }
             console.timeEnd("des");
-            
-            cachedRows = cachedRows.concat(x).toList();
-            this.setit(cachedRows);
-            
+
+            // cachedRows = cachedRows.concat(x).toList();
+            // this.setit(cachedRows);
+
         };
 
 
     }
 
-    private setit:any = debounce((x:any) => {
-        this.setState((ps) => {
-            const r = ps.rows.concat(x).toList();
-            return { ...ps, rows: r };
-        });
-    },100,false);
+    // private setit: any = debounce((x: any) => {
+    //     this.setState((ps) => {
+    //         const r = ps.rows.concat(x).toList();
+    //         return { ...ps, rows: r };
+    //     });
+    // }, 100, false);
 
 
     public async componentDidMount() {
@@ -231,49 +260,55 @@ class App extends React.Component<{}, IState> {
             </Select>);
 
         return (
-            <HotKeys keyMap={map} handlers={handlers}>
-                <div className="App">
-                    <header className="App-header">
-                        <div className="searchBar">
-                        <Input.Search placeholder="Grep for message..." type="search"
-                            value={this.state.query.grep} onChange={this.handleSearchChange} addonAfter={orderBy} />
-                        </div>
-                        <div className="searchControls">
-                            
-                            <RangePicker
-                                defaultValue={[this.state.query.timeRange.from, this.state.query.timeRange.to]}
-                                ranges={
-                                    {
-                                        'Last 30m': [moment().subtract(30, "m"), moment()],
-                                        'Last 60m': [moment().subtract(60, "m"), moment()],
-                                        'Last 2h': [moment().subtract(2, "h"), moment()],
-                                        'Last 8h': [moment().subtract(8, "h"), moment()],
-                                        'Today': [moment().startOf('day'), moment().endOf('day')],
-                                        'This Month': [moment().startOf('month'), moment().endOf('month')]
-                                    }}
-                                showTime
-                                format="YYYY-MM-DD HH:mm:ss"
-                                onChange={this.rangeChange}
-                            />
-                            <Button onClick={this.handleShowSettings}>Settings</Button>
-                        </div>
-                        <Tooltip placement="left" title="(Enter)">
-                            <Button type="primary" className="refreshbtn" onClick={this.handleRefresh}>Refresh</Button>
-                        </Tooltip>
-                    </header>
+            <Provider inject={[logContainer]}>
+                <Subscribe to={[LogContainer]}>
+                {lc => (
+                <HotKeys keyMap={map} handlers={handlers}>
+                    <div className="App">
+                        <header className="App-header">
+                            <div className="searchBar">
+                                <Input.Search placeholder="Grep for message..." type="search"
+                                    value={this.state.query.grep} onChange={this.handleSearchChange} addonAfter={orderBy} />
+                            </div>
+                            <div className="searchControls">
 
-                    <ConsoleView rows={this.state.rows} />
-                    <Modal
-                        title="Basic Modal"
-                        visible={this.state.showSettings}
-                        onOk={this.handleSettingsSave}
-                        onCancel={this.handleSettingsclose}
-                    >
-                        <Input value={this.state.settings.apiId} onChange={this.handleApiIdChange} addonBefore="Api ID" />
-                        <Input value={this.state.settings.apiKey} onChange={this.handleApiKeyChange} addonBefore="Api Key" />
-                    </Modal>
-                </div>
-            </HotKeys>
+                                <RangePicker
+                                    defaultValue={[this.state.query.timeRange.from, this.state.query.timeRange.to]}
+                                    ranges={
+                                        {
+                                            'Last 30m': [moment().subtract(30, "m"), moment()],
+                                            'Last 60m': [moment().subtract(60, "m"), moment()],
+                                            'Last 2h': [moment().subtract(2, "h"), moment()],
+                                            'Last 8h': [moment().subtract(8, "h"), moment()],
+                                            'Today': [moment().startOf('day'), moment().endOf('day')],
+                                            'This Month': [moment().startOf('month'), moment().endOf('month')]
+                                        }}
+                                    showTime
+                                    format="YYYY-MM-DD HH:mm:ss"
+                                    onChange={this.rangeChange}
+                                />
+                                <Button onClick={this.handleShowSettings}>Settings</Button>
+                            </div>
+                            <Tooltip placement="left" title="(Enter)">
+                                <Button type="primary" className="refreshbtn" onClick={this.handleRefresh}>Refresh</Button>
+                            </Tooltip>
+                        </header>
+
+                        <ConsoleView rows={lc.state.rows} />
+                        <Modal
+                            title="Basic Modal"
+                            visible={this.state.showSettings}
+                            onOk={this.handleSettingsSave}
+                            onCancel={this.handleSettingsclose}
+                        >
+                            <Input value={this.state.settings.apiId} onChange={this.handleApiIdChange} addonBefore="Api ID" />
+                            <Input value={this.state.settings.apiKey} onChange={this.handleApiKeyChange} addonBefore="Api Key" />
+                        </Modal>
+                    </div>
+                </HotKeys>
+                )}
+                </Subscribe>
+            </Provider>
         );
     }
 
@@ -354,7 +389,7 @@ class App extends React.Component<{}, IState> {
     // }
 
     private handleRefresh = async (e?: any) => {
-        
+
         if (e) {
             e.stopPropagation();
         }
@@ -409,18 +444,18 @@ class App extends React.Component<{}, IState> {
 
     private async getData() {
 
-        const hide = message.loading('Refreshing data...',0);
+        const hide = message.loading('Refreshing data...', 0);
         // save query to storage
         localStorage.setItem("query", JSON.stringify(this.state.query));
 
         let d: InsightsResponse
         try {
-             d = await async_fetch_data(this.state.settings.apiId, this.state.settings.apiKey, this.state.query);
+            d = await async_fetch_data(this.state.settings.apiId, this.state.settings.apiKey, this.state.query);
         } catch (error) {
             console.error("Failed", error);
 
             // do not warn on manual abort
-            if(error.code !== 20) {
+            if (error.code !== 20) {
                 message.error('Failed to fetch data from AppInsights, check your settings');
             }
             return;
@@ -441,7 +476,7 @@ class App extends React.Component<{}, IState> {
         // })
 
         // console.time();
-        
+
         // const table = fromJS(d.tables[0]);
         // const columns: List<Map<string,string>> = table.get("columns");
         // const rows: List<ILogRow> = table.get('rows').map((row: List<any>, index:number) => {
@@ -496,12 +531,12 @@ class App extends React.Component<{}, IState> {
 }
 
 interface ILogRow {
-    itemId:string,
+    itemId: string,
     timestamp: string,
     severiLevel: number,
     message: string;
     itemType: string,
-    fields: Map<string,any>
+    fields: Map<string, any>
     setGrep: (str: string) => void;
     showDetails: (row: ILogRow) => void;
 }
@@ -510,12 +545,12 @@ interface IConsoleProps {
     rows: List<ILogRow>
 }
 
-class ConsoleView extends React.Component<IConsoleProps,any> {
+class ConsoleView extends React.Component<IConsoleProps, any> {
 
     /**
      *
      */
-    constructor(props:any) {
+    constructor(props: any) {
         super(props);
         this.state = {
             rowsToRender: this.props.rows.take(ConsoleView.pageSize * 2)
@@ -524,10 +559,10 @@ class ConsoleView extends React.Component<IConsoleProps,any> {
 
     static pageSize: number = 50;
 
-    static getDerivedStateFromProps(props:any, ps:any) {
-        if(ps.rowsToRender.count()){
+    static getDerivedStateFromProps(props: any, ps: any) {
+        if (ps.rowsToRender.count()) {
             return null;
-        }else {
+        } else {
             return { rowsToRender: props.rows.take(ConsoleView.pageSize * 2) }
         }
     }
@@ -536,39 +571,45 @@ class ConsoleView extends React.Component<IConsoleProps,any> {
     public render() {
         console.log("render", this.state.rowsToRender.count() || this.props.rows.count());
         return (            
-            <DynamicList currentLength={this.state.rowsToRender.count() || this.props.rows.count()} pageSize={ConsoleView.pageSize} awaitMore={true} itemsRenderer={this.itemsRenderer} onIntersection={this.intersect}>
-                {this.itemRenderer}
-            </DynamicList>
+                <DynamicList currentLength={this.state.rowsToRender.count() || this.props.rows.count()} pageSize={ConsoleView.pageSize} awaitMore={true} itemsRenderer={this.itemsRenderer} onIntersection={this.intersect}>
+                    {this.itemRenderer}
+                </DynamicList>            
         );
     }
 
-    private intersect = (size:number, pageSize: number) => {
+    private intersect = (size: number, pageSize: number) => {
         console.log("add rows", size, pageSize);
         this.setState(() => {
-            return {rowsToRender: this.props.rows.take(size +   ConsoleView.pageSize * 2)};
+            return { rowsToRender: this.props.rows.take(size + ConsoleView.pageSize * 2) };
         });
     }
 
-    private itemsRenderer = (items:any, ref:any) => (
+    private itemsRenderer = (items: any, ref: any) => (
         <div className="consoleView" ref={ref}>
             {items}
         </div>
     );
 
-    private itemRenderer = (index:number, key:string) => {
-        return <ConsoleRow key={key} row={this.props.rows.get(index)} />
+    private itemRenderer = (index: number, key: string) => {
+        return (
+            <Subscribe to={[LogContainer]} key={key}>
+                {c => (
+                    <ConsoleRow row={c.state.rows.get(index)} />
+                )}
+            </Subscribe>
+        );
     };
 }
 
-class ConsoleRow extends React.Component<{row: ILogRow},any> {
+class ConsoleRow extends React.Component<{ row: ILogRow }, any> {
     /**
      *
      */
 
-    constructor(props:any) {
+    constructor(props: any) {
         super(props);
     }
-    
+
     public render() {
         const row: any = this.props.row;
         const severityLevel = translateSeverityLevel(row.get("severityLevel"));
@@ -587,18 +628,18 @@ class ConsoleRow extends React.Component<{row: ILogRow},any> {
         //console.log("Render?", r.toJS());
 
         return (
-                <div className="consoleRow" key={r.get("itemId")}>
-                    <div className="id">{r.get("itemId")}</div>
-                    <div className="timestamp">{r.get("timestamp")}</div>
-                    <Icon className="details" type="message" onClick={this.showDetails} />
-                    <div className={"loglevel " + severityLevel}>{severityLevel}</div>
-                    <div className="message">{msg}</div>
-                    <div className="itemType">{r.get("itemType")}</div>
-                </div>
+            <div className="consoleRow" key={r.get("itemId")}>
+                <div className="id">{r.get("itemId")}</div>
+                <div className="timestamp">{r.get("timestamp")}</div>
+                <Icon className="details" type="message" onClick={this.showDetails} />
+                <div className={"loglevel " + severityLevel}>{severityLevel}</div>
+                <div className="message">{msg}</div>
+                <div className="itemType">{r.get("itemType")}</div>
+            </div>
         )
     }
 
- 
+
     // private setGrep = () => {
     //     const selection = window.getSelection().getRangeAt(0).cloneContents().textContent;
     //     if (typeof selection === "string" && selection !== "") {

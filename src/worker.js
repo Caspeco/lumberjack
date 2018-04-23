@@ -16,15 +16,15 @@ onmessage = function (ev) {
     // js-lint
     const table = fromJS(ev.data.tables[0]);
     const columns = table.get("columns");
-
-    const arr = [];
-    
     const allRows = table.get('rows');
+    
+    const stepSize = 10;
+    
     let count = 0;
     while(count < allRows.count() -1) {
-        let rows = allRows.skip(count).take(10);
+        let rows = allRows.skip(count).take(stepSize);
         // console.log(count, allRows.count());
-        count += 10;
+        count += stepSize;
         rows = rows.map((row, index) => {
 
             const fields = row.toOrderedMap().mapEntries((entry, index2) => {
@@ -45,7 +45,7 @@ onmessage = function (ev) {
         // console.log(rows);
         
         const json = transit.toJSON(rows);
-        postMessage(json);
+        postMessage({topic: count ===  stepSize ? "new" : "con", payload: json});
     }
     
     
