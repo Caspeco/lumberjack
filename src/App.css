@@ -62,6 +62,10 @@
   grid-area: bottomleft
 }
 
+.timePicker {
+  grid-area: topleft;
+}
+
 .consoleView {
   background: black;
   color:white;
@@ -88,6 +92,10 @@
   cursor: pointer;
 }
 
+.consoleRow .hashtag:hover {
+  text-decoration: underline;
+}
+
 .consoleRow .details {
   margin:0 5px;
   cursor:pointer;
@@ -104,6 +112,11 @@
   border-radius: 2px;
   padding:2px 5px;
   height:100%;
+  cursor: pointer;
+}
+
+.consoleRow .loglevel:hover {
+  text-decoration: underline;
 }
 
 .loglevel.error {

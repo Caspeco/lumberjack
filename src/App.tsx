@@ -1,5 +1,5 @@
 /* tslint:disable */
-import { Select, message, Modal, Icon, DatePicker, Button, Input, Tooltip } from 'antd';
+import { Select, message, Modal, Icon, DatePicker, Button, Input, Tooltip, TreeSelect } from 'antd';
 import momentjson from 'moment-json-parser';
 const RangePicker = DatePicker.RangePicker;
 const Option = Select.Option;
@@ -33,6 +33,32 @@ const worker = new Worker();
 type ILogState = {
     rows: List<any>;
 };
+
+const treeData = [{
+    label: 'Severity Level',
+    value: '0-0',
+    key: '0-0',    
+    children: [{
+      label: 'Debug',
+      value: '0',
+      key: '0-0-0',
+    },
+    {
+        label: 'Info',
+        value: '1',
+        key: '0-0-1',
+      },
+      {
+        label: 'Warning',
+        value: '2',
+        key: '0-0-2',
+      },
+      {
+        label: 'Error',
+        value: '3',
+        key: '0-0-3',
+      }],
+  }];
 
 class LogContainer extends Container<ILogState> {
     state = {
@@ -133,16 +159,25 @@ interface IQueryObject {
     };
     orderBy: "desc" | "asc";
     grep: string;
-    severityLevel: [1, 2, 3, 4];
+    severityLevel2: [1, 2, 3, 4];
+    severityLevel: string[];
 }
 
 function escapeai(str: string) {
     return str.replace(/["]/g, '\\"')
 }
 
-async function async_fetch_data(appId: string, appKey: string, query: IQueryObject) {
+function translateSeverityLevelFromTree(val: string[]) {
+    return val.map((v) => {
+        const x = v.split("-").pop()
+        console.log(x);
+        return x;
+    });    
+}
 
-    const severityLevel = query.severityLevel.length > 0 ? `where severityLevel in (${query.severityLevel.join(",")})` : "";
+async function async_fetch_data(appId: string, appKey: string, query: IQueryObject) {
+    const sl = translateSeverityLevelFromTree(query.severityLevel);
+    const severityLevel = sl.length > 0 ? `where severityLevel in (${sl.join(",")})` : "";
 
     const q2 = `
     exceptions
@@ -205,6 +240,8 @@ interface IState {
     showSettings: boolean;
     loading: boolean;
     showDetails: ConsoleRow | null;
+    queryHistory: List<Map<any,any>>;
+    currentQuery: number;
     // defaultRange: [moment.Moment,moment.Moment]
 };
 
@@ -249,7 +286,7 @@ class App extends React.Component<{}, IState> {
                 to: moment().utc()
             },
             grep: "",
-            severityLevel: [0, 1, 2, 3],
+            severityLevel: {value:'0-0-0'},
             ...momentjson(localStorage.getItem("query") as string)
         };
 
@@ -267,7 +304,9 @@ class App extends React.Component<{}, IState> {
             settings,
             showSettings: false,
             loading: false,
-            showDetails: null
+            showDetails: null,
+            queryHistory: List(),
+            currentQuery: 0
         }
 
         //let cachedRows = List();
@@ -296,7 +335,11 @@ class App extends React.Component<{}, IState> {
     public render() {
 
         const handlers = {
-            'refresh': this.handleRefresh
+            'enter': this.handleRefresh,
+            'shift+enter': this.handleRefresh,// this.handleSetGrepFromSelect,
+            'shift+left': this.goBack,
+            'shift+right': this.goForward,
+            'ctrl+enter': this.handleSetGrepFromSelect
         };
 
         const orderBy = (
@@ -306,6 +349,18 @@ class App extends React.Component<{}, IState> {
             </Select>);
 
         const hasNewQuery = !this.state.lastQuery.equals(fromJS(this.state.query));
+        
+        const tProps = {
+            treeData,
+            value: this.state.query.severityLevel,
+            onChange: this.onTreeChange,
+            treeCheckable: true,
+            showCheckedStrategy: TreeSelect.SHOW_CHILD,
+            searchPlaceholder: 'Please select severity',            
+            style: {
+              width: 300,
+            },
+          };
 
         return (
             <Provider inject={[logContainer]}>
@@ -321,6 +376,7 @@ class App extends React.Component<{}, IState> {
                             <div className="searchControls">
 
                                 <RangePicker
+                                className="timePicker"
                                     defaultValue={[this.state.query.timeRange.from, this.state.query.timeRange.to]}
                                     ranges={
                                         {
@@ -335,6 +391,7 @@ class App extends React.Component<{}, IState> {
                                     format="YYYY-MM-DD HH:mm:ss"
                                     onChange={this.rangeChange}
                                 />
+                                <TreeSelect {...tProps} />
                                 <Button onClick={this.handleShowSettings}>Settings</Button>
                             </div>
                             <Tooltip placement="left" title="(Enter)">
@@ -358,6 +415,37 @@ class App extends React.Component<{}, IState> {
                 </Subscribe>
             </Provider>
         );
+    }
+    private goBack = () => {
+        const current = this.state.currentQuery;
+        console.log("go back from", this.state.currentQuery, "to", this.state.currentQuery-1);
+        var last = this.state.queryHistory.get(current -1);
+        if(!last) { return; }
+        this.setState((ps) => {
+            return {
+                query: last.toJS(),
+                currentQuery: ps.queryHistory.indexOf(last)
+            }
+        });
+    }
+
+    private goForward = () => {
+        var current = this.state.currentQuery;
+        console.log("go forward from", current, "to", current+1);
+        var last = this.state.queryHistory.get(current+1);
+        if(!last) { return; }
+        this.setState((ps) => {
+            return {
+                query: last.toJS(),
+                currentQuery: ps.queryHistory.indexOf(last)
+
+            }
+        });
+    }
+    private onTreeChange = (value:any) => {
+        this.setState({
+            query: {...this.state.query, severityLevel: value }
+        })
     }
 
     // private handleSettingsClose = () => {
@@ -430,10 +518,17 @@ class App extends React.Component<{}, IState> {
         });
     }
 
-    private handleSetGrep = (str: string) => {
+    private handleSetGrep = (values: {}) => {
         this.setState((ps) => {
-            return { query: { ...ps.query, grep: str } }
+            return { query: { ...ps.query, ...values } }
         }, this.getData);
+    }
+
+    private handleSetGrepFromSelect = () => {
+        const selection = window.getSelection().getRangeAt(0).cloneContents().textContent;
+        if (typeof selection === "string" && selection !== "") {
+            this.handleSetGrep({grep:selection});
+        }
     }
 
     private handleRefresh = async (e?: any) => {
@@ -495,6 +590,19 @@ class App extends React.Component<{}, IState> {
         // save query to storage
         localStorage.setItem("query", JSON.stringify(this.state.query));
 
+        // todo: break out and only save if different
+        const last = this.state.queryHistory.last() || Map();
+        if(!last.equals(fromJS(this.state.query))) {
+            this.setState((ps) => {
+                return {
+                    queryHistory: ps.queryHistory.push(fromJS(ps.query)),
+                    currentQuery: ps.queryHistory.count() 
+                }
+            }, () => {
+                console.log("as", this.state.queryHistory.toJS());
+            });
+        }
+
         this.setState({
             lastQuery: fromJS(this.state.query)
         });
@@ -527,7 +635,7 @@ interface ILogRow {
 
 interface IConsoleProps {
     rows: List<ILogRow>,
-    setGrep: (str: string) => void;
+    setGrep: (str: {}) => void;
     showDetails: (row: ILogRow) => void;
 }
 
@@ -578,7 +686,7 @@ class ConsoleView extends React.Component<IConsoleProps, any> {
 
 interface IConsoleRowProps {
     row: any;
-    setGrep: (str: string) => void;
+    setGrep: (values: {}) => void;
     showDetails: (row: ILogRow) => void;
 }
 
@@ -605,7 +713,7 @@ class ConsoleRow extends React.Component<IConsoleRowProps, any> {
         const regexp = /\B(#[a-zA-Z0-9-]+\b|#"[a-zA-Z0-9- ]+["|\b])(?!;)/gu;
 
         const msg = reactreplace(row.get("message"), regexp, (match: string, i: number) => {
-            const grep = () => { this.props.setGrep(match); }
+            const grep = () => { this.props.setGrep({grep: match}); }
             return <span className="hashtag" key={i} onClick={grep}>{match}</span>
         });
 
@@ -620,11 +728,17 @@ class ConsoleRow extends React.Component<IConsoleRowProps, any> {
                 <div className="id">{r.get("itemId")}</div>
                 <div className="timestamp">{moment(r.get("timestamp")).format("YYYY-MM-DD HH:mm:ss:SSS")}</div>
                 <Icon className="details" type="message" onClick={this.showDetails} />
-                <div className={"loglevel " + severityLevel}>{severityLevel}</div>
+                <div className={"loglevel " + severityLevel} onClick={this.setSeverity}>{severityLevel}</div>
                 <div className="message">{msg}</div>
                 <div className="itemType">{r.get("itemType")}</div>
             </div>
         )
+    }
+
+    private setSeverity = () => {
+        this.props.setGrep({
+            severityLevel: [this.props.row.get("severityLevel").toString()]
+        })
     }
 
 
