@@ -36,20 +36,68 @@ class LogContainer extends Container<ILogState> {
         rows: List(),
     };
 
+    pendingSet:List<any> = List();
+    pendingChanges:List<any> = List();
+
     add = (rows: List<any>) => {
-        this.setState((state: ILogState) => {
-            const allRows = state.rows.concat(rows).toList();
-            return { rows: allRows }
-        })
+        // this.setState((state: ILogState) => {
+        //     const allRows = state.rows.concat(rows).toList();
+        //     return { rows: allRows }
+        // })
+        this.pendingChanges = this.pendingChanges.concat(rows).toList();
+        this.throttleAdd();
     }
 
     set = (rows: List<any>) => {
-        this.setState(() => {
-            return { rows }
-        })
+        console.log("set");
+        this.pendingSet = rows;
+        this.debounceSet();
     }
+
+    innerAdd = () => {
+        this.setState((s) => {
+            return { rows: s.rows.concat(this.pendingChanges).toList() }
+        }
+        //, () => {console.warn("done add", this.state)}
+        );
+    }
+
+    innerSet = () => {
+        console.log("inner set");
+        this.setState(() => {
+            return { rows: this.pendingSet }
+        }, () => {console.log("done set", this.state)});
+    }
+
+    debounceSet = debounce(this.innerSet,100,true);
+    // debounceAdd = debounce(this.innerAdd,100,true);
+    throttleAdd = throttle(this.innerAdd,100);
 }
 let logContainer = new LogContainer();
+
+function throttle(fn:any, threshhold:number, scope?:any) {
+    threshhold || (threshhold = 250);
+    let last:any,
+        deferTimer:any;
+    return function () {
+        // @ts-ignore
+      var context = scope || this;
+  
+      var now = +new Date,
+          args = arguments;
+      if (last && now < last + threshhold) {
+        // hold on to it
+        clearTimeout(deferTimer);
+        deferTimer = setTimeout(function () {
+          last = now;
+          fn.apply(context, args);
+        }, threshhold);
+      } else {
+        last = now;
+        fn.apply(context, args);
+      }
+    };
+  }
 
 
 const API_BASE = "https://api.applicationinsights.io/v1/apps/";
@@ -163,22 +211,22 @@ const map = {
     'refresh': 'enter'
 };
 
-// function debounce(func: any, wait: any, immediate: any) {
-//     let timeout: any;
-//     return function () {
-//         // @ts-ignore
-//         var context: any = this;
-//         var args = arguments;
-//         var later = function () {
-//             timeout = null;
-//             if (!immediate) func.apply(context, args);
-//         };
-//         var callNow = immediate && !timeout;
-//         clearTimeout(timeout);
-//         timeout = setTimeout(later, wait);
-//         if (callNow) func.apply(context, args);
-//     };
-// };
+function debounce(func: any, wait: any, immediate: any) {
+    let timeout: any;
+    return function () {
+        // @ts-ignore
+        var context: any = this;
+        var args = arguments;
+        var later = function () {
+            timeout = null;
+            if (!immediate) func.apply(context, args);
+        };
+        var callNow = immediate && !timeout;
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+        if (callNow) func.apply(context, args);
+    };
+};
 
 class App extends React.Component<{}, IState> {
 
@@ -220,7 +268,7 @@ class App extends React.Component<{}, IState> {
         worker.onmessage = (event: any) => {
             console.time("des");
             const x = transit.fromJSON(event.data.payload);
-            if (event.data.topic === "first") {
+            if (event.data.topic === "new") {
                 logContainer.set(x);
             } else {
                 logContainer.add(x);
@@ -228,20 +276,12 @@ class App extends React.Component<{}, IState> {
             console.timeEnd("des");
 
             // cachedRows = cachedRows.concat(x).toList();
-            // this.setit(cachedRows);
+            //this.setit(cachedRows);
 
         };
 
 
     }
-
-    // private setit: any = debounce((x: any) => {
-    //     this.setState((ps) => {
-    //         const r = ps.rows.concat(x).toList();
-    //         return { ...ps, rows: r };
-    //     });
-    // }, 100, false);
-
 
     public async componentDidMount() {
         this.getData();
@@ -553,25 +593,25 @@ class ConsoleView extends React.Component<IConsoleProps, any> {
     constructor(props: any) {
         super(props);
         this.state = {
-            rowsToRender: this.props.rows.take(ConsoleView.pageSize * 2)
+            rowsToRender: ConsoleView.pageSize
         }
     }
 
     static pageSize: number = 50;
 
-    static getDerivedStateFromProps(props: any, ps: any) {
-        if (ps.rowsToRender.count()) {
-            return null;
-        } else {
-            return { rowsToRender: props.rows.take(ConsoleView.pageSize * 2) }
-        }
-    }
+    // static getDerivedStateFromProps(props: any, ps: any) {
+    //     if (ps.rowsToRender.count()) {
+    //         return null;
+    //     } else {
+    //         return { rowsToRender: props.rows.take(ConsoleView.pageSize) }
+    //     }
+    // }
 
 
     public render() {
-        console.log("render", this.state.rowsToRender.count() || this.props.rows.count());
+        //console.log("render", this.state.rowsToRender.count() || this.props.rows.count());
         return (            
-                <DynamicList currentLength={this.state.rowsToRender.count() || this.props.rows.count()} pageSize={ConsoleView.pageSize} awaitMore={true} itemsRenderer={this.itemsRenderer} onIntersection={this.intersect}>
+                <DynamicList currentLength={this.props.rows.take(this.state.rowsToRender).count()} pageSize={ConsoleView.pageSize} awaitMore={true} itemsRenderer={this.itemsRenderer} onIntersection={this.intersect}>
                     {this.itemRenderer}
                 </DynamicList>            
         );
@@ -580,7 +620,7 @@ class ConsoleView extends React.Component<IConsoleProps, any> {
     private intersect = (size: number, pageSize: number) => {
         console.log("add rows", size, pageSize);
         this.setState(() => {
-            return { rowsToRender: this.props.rows.take(size + ConsoleView.pageSize * 2) };
+             return { rowsToRender: size + pageSize };
         });
     }
 
@@ -608,6 +648,18 @@ class ConsoleRow extends React.Component<{ row: ILogRow }, any> {
 
     constructor(props: any) {
         super(props);
+    }
+
+    shouldComponentUpdate(nextProps:any, nextState:any) {
+        if(!nextProps.row.equals(this.props.row)) {
+            // console.warn("scu", true);
+
+            return true;
+        }
+        // console.log("scu", false);
+        
+
+        return false;
     }
 
     public render() {

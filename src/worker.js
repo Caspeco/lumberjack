@@ -44,6 +44,7 @@ onmessage = function (ev) {
     
         // console.log(rows);
         
+        console.log("worker", count, stepSize)
         const json = transit.toJSON(rows);
         postMessage({topic: count ===  stepSize ? "new" : "con", payload: json});
     }
