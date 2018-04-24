@@ -189,7 +189,7 @@ async function async_fetch_data(appId: string, appKey: string, query: IQueryObje
     | where timestamp between(datetime(${query.timeRange.from.format("YYYY-MM-DD HH:mm:ss")}) .. datetime(${query.timeRange.to.format("YYYY-MM-DD HH:mm:ss")}))
     | project-away message 
     | project-rename message = message2
-    | where message contains "${escapeai(query.grep)}"
+    | where message contains "${escapeai(query.grep)}" or operation_Id contains "${escapeai(query.grep)}" or customDimensions contains "${escapeai(query.grep)}" or user_Id contains "${escapeai(query.grep)}"
     | ${severityLevel}
     | order by timestamp ${query.orderBy}, itemId desc
     `;
@@ -722,17 +722,26 @@ class ConsoleRow extends React.Component<IConsoleRowProps, any> {
         // };
         const r: any = row;
         //console.log("Render?", r.toJS());
-
+        const opId = r.get("operation_Id");
         return (
             <div className="consoleRow" key={r.get("itemId")}>
-                <div className="id">{r.get("itemId")}</div>
+                <Tooltip placement="topLeft" title={r.get("cloud_RoleInstance")}>
+                    <div className="id">{r.get("cloud_RoleInstance")}</div>
+                </Tooltip>
                 <div className="timestamp">{moment(r.get("timestamp")).format("YYYY-MM-DD HH:mm:ss:SSS")}</div>
-                <Icon className="details" type="message" onClick={this.showDetails} />
+                <Icon className="details" type="message" onClick={this.showDetails} />                
                 <div className={"loglevel " + severityLevel} onClick={this.setSeverity}>{severityLevel}</div>
+                {opId ? <div className="operation_Id " onClick={this.setOpid}>{opId}</div> : null}
                 <div className="message">{msg}</div>
                 <div className="itemType">{r.get("itemType")}</div>
             </div>
         )
+    }
+
+    private setOpid = () => {
+        this.props.setGrep({
+            grep: this.props.row.get("operation_Id").toString()
+        })
     }
 
     private setSeverity = () => {

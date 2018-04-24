@@ -96,6 +96,23 @@
   text-decoration: underline;
 }
 
+.consoleRow .operation_Id {
+  background: #272727;
+  border-radius: 2px;
+  color: #989898;
+  padding: 2px 2px;
+  cursor: pointer;
+  font-size: 11px;
+  width: 39px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  margin-right: 5px;
+}
+
+.consoleRow .operation_Id:hover {
+  text-decoration: underline;
+}
+
 .consoleRow .details {
   margin:0 5px;
   cursor:pointer;
