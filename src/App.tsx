@@ -87,6 +87,7 @@ class LogContainer extends Container<ILogState> {
     }
 
     innerAdd = () => {
+        // @ts-ignore 
         this.setState((s) => {
             return { rows: s.rows.concat(this.pendingChanges).toList() }
         }
@@ -96,6 +97,7 @@ class LogContainer extends Container<ILogState> {
 
     innerSet = () => {
         console.log("inner set");
+        // @ts-ignore
         this.setState(() => {
             return { rows: this.pendingSet }
         });
