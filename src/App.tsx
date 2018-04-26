@@ -16,16 +16,6 @@ import transit from 'transit-immutable-js';
 import { Provider, Subscribe, Container } from 'unstated';
 const worker = new Worker();
 
-// worker.postMessage({ a: 1 });
-
-
-// worker.addEventListener("message", (event:any) => {
-//     console.log("event2",event);
-// });
-
-//momentjson.overrideDefault();
-
-// import logo from './logo.svg';
 type ILogState = {
     rows: List<any>;
 };
@@ -65,10 +55,6 @@ class LogContainer extends Container<ILogState> {
     pendingChanges:List<any> = List();
 
     add = (rows: List<any>) => {
-        // this.setState((state: ILogState) => {
-        //     const allRows = state.rows.concat(rows).toList();
-        //     return { rows: allRows }
-        // })
         console.log("adding new", rows.count());
         this.pendingChanges = this.pendingChanges.concat(rows).toList();
         console.log("pending changes", this.pendingChanges.count());
@@ -98,43 +84,10 @@ class LogContainer extends Container<ILogState> {
             return { rows: this.pendingSet }
         });
     }
-
-    // debounceSet = debounce(this.innerSet,100,true);
-    // debounceAdd = debounce(this.innerAdd,100,true);
-    // throttleAdd = throttle(this.innerAdd,1000);
 }
 let logContainer = new LogContainer();
 
-// function throttle(fn:any, threshhold:number, scope?:any) {
-//     threshhold || (threshhold = 250);
-//     let last:any,
-//         deferTimer:any;
-//     return function () {
-//       var context = scope || this;
-  
-//       var now = +new Date,
-//           args = arguments;
-//       if (last && now < last + threshhold) {
-//         // hold on to it
-//         clearTimeout(deferTimer);
-//         deferTimer = setTimeout(function () {
-//           last = now;
-//           fn.apply(context, args);
-//         }, threshhold);
-//       } else {
-//         last = now;
-//         fn.apply(context, args);
-//       }
-//     };
-//   }
-
-
 const API_BASE = "https://api.applicationinsights.io/v1/apps/";
-// let query = "GET /v1/apps/90f8abec-4ef1-45a3-b524-d65d1fd78e6a/query?timespan=PT12H&query=traces HTTP/1.1
-// Host: api.applicationinsights.io
-// x-api-key: a4qjgdzsvdkrhoisaxfey4csv6822yy1e208b8uu"
-
-// curl "https://api.applicationinsights.io/v1/apps/90f8abec-4ef1-45a3-b524-d65d1fd78e6a/query?timespan=PT12H&query=traces" -H "x-api-key: a4qjgdzsvdkrhoisaxfey4csv6822yy1e208b8uu"
 
 let controller: AbortController | null = null;
 async function async_fetch(url: string, conf: {}) {
@@ -208,19 +161,6 @@ async function async_fetch_data(appId: string, appKey: string, query: IQueryObje
     })
 }
 
-// interface ITableColumn {
-//     name: string
-// }
-
-// function getIndex(key: string, columns: ITableColumn[]) {
-//     return columns.findIndex(c => c.name === key);
-// }
-
-// function get(key: string, table: any, row: any) {
-//     const i = getIndex(key, table.columns);
-//     return row[i];
-// }
-
 interface InsightsResponse {
     tables: Array<{
         rows: any[][]
@@ -257,22 +197,6 @@ interface ISettings {
 const map = {
     'refresh': 'enter'
 };
-
-// function debounce(func: any, wait: any, immediate: any) {
-//     let timeout: any;
-//     return function () {
-//         var context: any = this;
-//         var args = arguments;
-//         var later = function () {
-//             timeout = null;
-//             if (!immediate) func.apply(context, args);
-//         };
-//         var callNow = immediate && !timeout;
-//         clearTimeout(timeout);
-//         timeout = setTimeout(later, wait);
-//         if (callNow) func.apply(context, args);
-//     };
-// };
 
 class App extends React.Component<{}, IState> {
 
@@ -511,12 +435,6 @@ class App extends React.Component<{}, IState> {
         })
     }
 
-    // private handleSettingsClose = () => {
-    //     this.setState({
-    //         showDetails: null
-    //     });
-    // }
-
     private handleShowSettings = () => {
         this.setState({
             showSettings: true
@@ -585,21 +503,7 @@ class App extends React.Component<{}, IState> {
         await this.getData();
     }
 
-    private handleShowDetails = (r: any) => {
-        // const table = this.state.data.tables[0];
-        // const rows: any[] = table.rows
-        // // console.log(rows);
-        // const original = rows.find(x => get("itemId", table, x) === r.id);
-        // // console.log(original);
-        // // console.log(table);
-        // // construct obj with keys
-        // const obj = {};
-        // original.forEach((element: any[], index: number) => {
-        //     // console.log(element,index, table.columns[index]);
-        //     if (element) {
-        //         obj[table.columns[index].name] = element;
-        //     }
-        // });
+    private handleShowDetails = (r: any) => {        
         const obj = r.toJS();
         Modal.info({
             title: 'Details',
@@ -635,7 +539,7 @@ class App extends React.Component<{}, IState> {
         // save query to storage
         localStorage.setItem("query", JSON.stringify(this.state.query));
 
-        // todo: break out and only save if different
+        // todo: break out
         const last = this.state.queryHistory.last() || Map();
         if(!last.equals(fromJS(this.state.query))) {
             this.setState((ps) => {
@@ -794,14 +698,6 @@ class ConsoleRow extends React.Component<IConsoleRowProps, any> {
             severityLevel: [this.props.row.get("severityLevel").toString()]
         })
     }
-
-
-    // private setGrep = () => {
-    //     const selection = window.getSelection().getRangeAt(0).cloneContents().textContent;
-    //     if (typeof selection === "string" && selection !== "") {
-    //         this.props.setGrep(selection);
-    //     }
-    // }
 
     private showDetails = () => {
         this.props.showDetails(this.props.row);
