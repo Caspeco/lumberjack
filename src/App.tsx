@@ -110,7 +110,7 @@ interface IQueryObject {
     };
     orderBy: "desc" | "asc";
     grep: string;
-    severityLevel2: [1, 2, 3, 4];
+    //severityLevel: [1, 2, 3, 4];
     severityLevel: string[];
 }
 
@@ -214,7 +214,7 @@ class App extends React.Component<{}, IState> {
                 to: moment().utc()
             },
             grep: "",
-            severityLevel: {value:'0-0-0'},
+            severityLevel: ["1","2","3"],
             ...momentjson(localStorage.getItem("query") as string)
         };
         const qsObject:any = location.search
@@ -356,7 +356,7 @@ class App extends React.Component<{}, IState> {
                         >
                             <Divider>Select app</Divider>
                             <Select value={this.state.settings.currentApp.appId} style={{ width: 120 }} onChange={this.handleInsightAppChange}>
-                                {settings.apps.map((x:any) => <Option value={x.appId}>{x.name}</Option>)}
+                                {settings.apps.map((x:any) => <Option key={x.appId} value={x.appId}>{x.name}</Option>)}
                             </Select>
                             <Divider>Shareable link</Divider>
                                         <span>{document.location.origin + "?settings=" + btoa(JSON.stringify(this.state.settings))}</span>
