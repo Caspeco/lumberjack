@@ -1,5 +1,5 @@
 /* tslint:disable */
-import { Select, message, Modal, Icon, DatePicker, Button, Input, Tooltip, TreeSelect } from 'antd';
+import { Select, message, Modal, Icon, DatePicker,Divider, Button, Input, Tooltip, TreeSelect } from 'antd';
 import momentjson from 'moment-json-parser';
 const RangePicker = DatePicker.RangePicker;
 const Option = Select.Option;
@@ -14,10 +14,6 @@ import { List, fromJS, Map } from "immutable";
 import Worker from 'worker-loader!./worker.js';
 import transit from 'transit-immutable-js';
 import { Provider, Subscribe, Container } from 'unstated';
-// if (process.env.NODE_ENV !== 'production') {
-//     const {whyDidYouUpdate} = require('why-did-you-update');
-//     whyDidYouUpdate(React);
-//   }
 const worker = new Worker();
 
 // worker.postMessage({ a: 1 });
@@ -182,8 +178,7 @@ async function async_fetch_data(appId: string, appKey: string, query: IQueryObje
     const severityLevel = sl.length > 0 ? `where severityLevel in (${sl.join(",")})` : "";
 
     const q2 = `
-    exceptions
-    | where cloud_RoleInstance contains "pingpong"
+    exceptions    
     | extend message2 = tostring(customDimensions["RenderedMessage"])
     | union (
         traces
@@ -247,9 +242,16 @@ interface IState {
     // defaultRange: [moment.Moment,moment.Moment]
 };
 
+interface InsightsApp extends Object {
+    appId?: string,
+    apiKey?: string,
+    name?: string
+}
+
 interface ISettings {
-    apiId: string;
-    apiKey: string;
+    newApp: InsightsApp
+    apps: InsightsApp[]
+    currentApp: InsightsApp;
 }
 
 const map = {
@@ -291,10 +293,28 @@ class App extends React.Component<{}, IState> {
             severityLevel: {value:'0-0-0'},
             ...momentjson(localStorage.getItem("query") as string)
         };
+        const qsObject:any = location.search
+        .slice(1)
+        .split('&')
+        .map(p => p.split('='))
+        .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
 
-        const settings = JSON.parse(localStorage.getItem("settings") as string) || {
-            apiKey: "<INSERT KEY>",
-            apiId: "<INSERT ID>"
+        let qsSettings = null;
+        if(qsObject.settings) {
+            qsSettings = JSON.parse(atob(qsObject.settings));
+        }
+        const settings: ISettings = qsSettings || JSON.parse(localStorage.getItem("settings") as string) || {
+            currentApp: {
+                appId: "",
+                apiKey: "",
+                name: "Missing App"
+            },
+            apps: [],
+            newApp: {
+                appId: "",
+                apiKey: "",
+                name: "Missing App"
+            }
         };
 
         this.state = {
@@ -363,6 +383,8 @@ class App extends React.Component<{}, IState> {
               width: 300,
             },
           };
+        
+        const settings = this.state.settings;
 
         return (
             <Provider inject={[logContainer]}>
@@ -403,13 +425,22 @@ class App extends React.Component<{}, IState> {
 
                         <ConsoleView rows={lc.state.rows} setGrep={this.handleSetGrep} showDetails={this.handleShowDetails} />
                         <Modal
-                            title="Basic Modal"
+                            title="Settings"
                             visible={this.state.showSettings}
                             onOk={this.handleSettingsSave}
                             onCancel={this.handleSettingsclose}
                         >
-                            <Input value={this.state.settings.apiId} onChange={this.handleApiIdChange} addonBefore="Api ID" />
-                            <Input value={this.state.settings.apiKey} onChange={this.handleApiKeyChange} addonBefore="Api Key" />
+                            <Divider>Select app</Divider>
+                            <Select value={this.state.settings.currentApp.appId} style={{ width: 120 }} onChange={this.handleInsightAppChange}>
+                                {settings.apps.map((x:any) => <Option value={x.appId}>{x.name}</Option>)}
+                            </Select>
+                            <Divider>Shareable link</Divider>
+                                        <span>{document.location.origin + "?settings=" + btoa(JSON.stringify(this.state.settings))}</span>
+                            <Divider>Add New</Divider>
+                            <Input value={this.state.settings.newApp.appId} onChange={(x) => this.newApp("appId",x)} addonBefore="App ID" />
+                            <Input value={this.state.settings.newApp.apiKey} onChange={(x) => this.newApp("apiKey",x)} addonBefore="Api Key" />
+                            <Input value={this.state.settings.newApp.name} onChange={(x) => this.newApp("name",x)} addonBefore="Name" />
+                            <Button type="primary" onClick={(e) => this.newApp("add",e)}>Add new App</Button>
                         </Modal>
                     </div>
                 </HotKeys>
@@ -418,6 +449,36 @@ class App extends React.Component<{}, IState> {
             </Provider>
         );
     }
+
+    private newApp = (field:string, e:any) => {
+
+        if(field === "add") {
+            console.log("apps", this.state.settings.apps);
+            this.state.settings.apps.push(this.state.settings.newApp)
+            // @ts-ignore
+            this.setState((ps) => {
+                return {settings: {...ps.settings, 
+                    currentApp: ps.settings.newApp,
+                    newApp: {}
+                }}
+            },() => { console.log("state", this.state.settings)});
+
+            return;
+        }
+
+        this.state.settings.newApp[field] =  e.target.value;
+        this.setState((ps) => {
+            return {settings: {...ps.settings }};
+        })
+    }
+
+    private handleInsightAppChange = (e: any) => {
+        console.log(e);
+        const app = this.state.settings.apps.find((a) => a.appId === e) as InsightsApp;
+        this.state.settings.currentApp = app;
+        this.setState({});
+    }
+
     private goBack = () => {
         const current = this.state.currentQuery;
         console.log("go back from", this.state.currentQuery, "to", this.state.currentQuery-1);
@@ -455,24 +516,6 @@ class App extends React.Component<{}, IState> {
     //         showDetails: null
     //     });
     // }
-
-    private handleApiIdChange = (e: any) => {
-        this.setState({
-            settings: {
-                ...this.state.settings,
-                apiId: e.target.value
-            }
-        });
-    }
-
-    private handleApiKeyChange = (e: any) => {
-        this.setState({
-            settings: {
-                ...this.state.settings,
-                apiKey: e.target.value
-            }
-        });
-    }
 
     private handleShowSettings = () => {
         this.setState({
@@ -611,7 +654,7 @@ class App extends React.Component<{}, IState> {
 
         let d: InsightsResponse
         try {
-            d = await async_fetch_data(this.state.settings.apiId, this.state.settings.apiKey, this.state.query);
+            d = await async_fetch_data(this.state.settings.currentApp.appId || "", this.state.settings.currentApp.apiKey || "", this.state.query);
         } catch (error) {
             console.error("Failed", error);
 
