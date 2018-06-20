@@ -723,7 +723,9 @@ class ConsoleRow extends React.Component<IConsoleRowProps, any> {
                 <Tooltip placement="topLeft" title={r.get("cloud_RoleInstance")}>
                     <div className="roleInstance link">{r.get("cloud_RoleInstance")}</div>
                 </Tooltip>
-                <div className="roleName link" onClick={this.setRoleName}>{r.get("cloud_RoleName")}</div>
+                <Tooltip placement="topLeft" title={r.get("cloud_RoleName")}>
+                    <div className="roleName link" onClick={this.setRoleName}>{r.get("cloud_RoleName")}</div>
+                </Tooltip>
                 <div className="timestamp">{moment(r.get("timestamp")).format("YYYY-MM-DD HH:mm:ss:SSS")}</div>
                 <Icon className="details" type="message" onClick={this.showDetails} />                
                 <div className={"loglevel " + severityLevel} onClick={this.setSeverity}>{severityLevel}</div>
@@ -742,7 +744,7 @@ class ConsoleRow extends React.Component<IConsoleRowProps, any> {
 
     private setRoleName = () => {
         this.props.setGrep({
-            grep: this.props.row.get("cloud_RoleInstance").toString()
+            grep: this.props.row.get("cloud_RoleName").toString()
         })
     }
 

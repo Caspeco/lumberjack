@@ -86,7 +86,11 @@
 
 .consoleRow .roleName {
   margin-right:10px;
-  max-width:98px;
+  width:98px;
+  flex: 0 0 auto;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .consoleRow .hashtag {
