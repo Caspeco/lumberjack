@@ -84,6 +84,11 @@
     align-items: center;
 }
 
+.consoleRow .roleName {
+  margin-right:10px;
+  max-width:98px;
+}
+
 .consoleRow .hashtag {
   background: white;
   border-radius: 2px;
@@ -153,14 +158,19 @@
   background: #242424;
 }
 
-.id {
-  margin-right: 20px;
+.roleInstance {
+  margin-right: 10px;
   color: green;
   text-overflow: ellipsis;
   white-space: nowrap;
   overflow: hidden;
-  width: 98px;
+  width: 58px;
   flex: 0 0 auto;
+}
+
+.link:hover {
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .timestamp {

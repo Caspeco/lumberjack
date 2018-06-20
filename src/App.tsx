@@ -99,19 +99,23 @@ async function async_fetch(url: string, conf: {}) {
 
     const signal = controller.signal
     const response = await fetch(url, { ...conf, signal });
-    if (response.ok) { return await response.json() }
+    if (response.ok) {
+        console.log("Response Age: ", response.headers["age"]);
+        return await response.json()
+    }
     throw new Error(response.status.toString())
 }
 
 interface IQueryObject {
     timeRange: {
         from: moment.Moment;
-        to: moment.Moment;
+        to?: moment.Moment;
     };
     orderBy: "desc" | "asc";
     grep: string;
     //severityLevel: [1, 2, 3, 4];
     severityLevel: string[];
+    maxAge?: number;
 }
 
 function escapeai(str: string) {
@@ -126,9 +130,42 @@ function translateSeverityLevelFromTree(val: string[]) {
     });    
 }
 
+function where(fields: string[], value: string, positive: boolean = true) {
+    let q = "| where ";
+    fields.forEach(field => {
+        q += `${field} ${positive ? "": "!"}contains "${value}" ${positive ? "or" : "and"} `;
+    });
+    console.log("Where thing?", q);
+    return q.substr(0, q.length - 4);
+    //return "message contains "${escapeai(grep)}" or operation_Id contains "${escapeai(grep)}" or customDimensions contains "${escapeai(grep)}" or user_Id contains "${escapeai(grep)}" or cloud_RoleInstance contains "${escapeai(grep)}"
+}
+
 async function async_fetch_data(appId: string, appKey: string, query: IQueryObject) {
     const sl = translateSeverityLevelFromTree(query.severityLevel);
     const severityLevel = sl.length > 0 ? `where severityLevel in (${sl.join(",")})` : "";
+    // if to is null it should be now.
+    console.warn(query.timeRange.to);
+    const to = (query.timeRange.to || moment().utc());
+    console.warn(to);
+
+
+    let excludeRegExp = new RegExp(/\W(-(\w*))/g);
+    
+    let match = excludeRegExp.exec(query.grep);
+    let grep = query.grep;
+    let excludes = [];
+    while(match != null){
+        console.log("match", match);
+        
+        excludes.push(match[2]);
+        
+        grep = grep.replace(match[0],"");
+        match = excludeRegExp.exec(query.grep);        
+    }
+    console.log("grep", grep);
+    console.log("excludes", excludes);
+
+    const fieldsToGrep = ["message", "operation_Id", "customDimensions", "user_Id", "cloud_RoleInstance", "cloud_RoleName"];
 
     const q2 = `
     exceptions    
@@ -136,10 +173,11 @@ async function async_fetch_data(appId: string, appKey: string, query: IQueryObje
     | union (
         traces
         | project-rename ["message2"] = message)
-    | where timestamp between(datetime(${query.timeRange.from.format("YYYY-MM-DD HH:mm:ss")}) .. datetime(${query.timeRange.to.format("YYYY-MM-DD HH:mm:ss")}))
+    | where timestamp between(datetime(${query.timeRange.from.format("YYYY-MM-DD HH:mm:ss")}) .. datetime(${to.format("YYYY-MM-DD HH:mm:ss")}))
     | project-away message 
     | project-rename message = message2
-    | where message contains "${escapeai(query.grep)}" or operation_Id contains "${escapeai(query.grep)}" or customDimensions contains "${escapeai(query.grep)}" or user_Id contains "${escapeai(query.grep)}"
+    ${where(fieldsToGrep, escapeai(grep))}
+    ${excludes.map(exclusion => where(fieldsToGrep, escapeai(exclusion as string), false)).join(",")}
     | ${severityLevel}
     | order by timestamp ${query.orderBy}, itemId desc
     `;
@@ -155,7 +193,8 @@ async function async_fetch_data(appId: string, appKey: string, query: IQueryObje
         body: JSON.stringify({ query: q2 }),
         headers: {
             'x-api-key': appKey,
-            'content-type': 'application/json'
+            'content-type': 'application/json',
+            // 'Cache-Control': 'no-cache' //'max-age=' + (query.maxAge || 30), this should be added as option
         },
         method: "POST"
     })
@@ -206,16 +245,22 @@ class App extends React.Component<{}, IState> {
     constructor(props: {}) {
         super(props);
 
+        var existingQuery = {...momentjson(localStorage.getItem("query") as string)};
+        if(existingQuery && existingQuery.timeRange) {
+            existingQuery.timeRange.from = existingQuery.timeRange.from ? existingQuery.timeRange.from.utc() : undefined;
+            existingQuery.timeRange.to = existingQuery.timeRange.to ? existingQuery.timeRange.to.utc() : undefined;
+        }
+
         const query: IQueryObject = {
             orderBy: "desc",
             source: "traces",
             timeRange: {
                 from: moment().utc().subtract(1, "h"),
-                to: moment().utc()
+                to: null
             },
             grep: "",
             severityLevel: ["1","2","3"],
-            ...momentjson(localStorage.getItem("query") as string)
+            ...existingQuery
         };
         const qsObject:any = location.search
         .slice(1)
@@ -310,6 +355,7 @@ class App extends React.Component<{}, IState> {
         
         const settings = this.state.settings;
 
+        const to = (this.state.query.timeRange.to ?  this.state.query.timeRange.to : undefined) as moment.Moment;
         return (
             <Provider inject={[logContainer]}>
                 <Subscribe to={[LogContainer]}>
@@ -325,13 +371,13 @@ class App extends React.Component<{}, IState> {
 
                                 <RangePicker
                                 className="timePicker"
-                                    defaultValue={[this.state.query.timeRange.from, this.state.query.timeRange.to]}
+                                    defaultValue={[this.state.query.timeRange.from, to]}
                                     ranges={
                                         {
-                                            'Last 30m': [moment().utc().subtract(30, "m"), moment().utc()],
-                                            'Last 60m': [moment().utc().subtract(60, "m"), moment().utc()],
-                                            'Last 2h': [moment().utc().subtract(2, "h"), moment().utc()],
-                                            'Last 8h': [moment().utc().subtract(8, "h"), moment().utc()],
+                                            'Last 30m': [moment().utc().subtract(30, "m")],
+                                            'Last 60m': [moment().utc().subtract(60, "m")],
+                                            'Last 2h': [moment().utc().subtract(2, "h")],
+                                            'Last 8h': [moment().utc().subtract(8, "h")],
                                             'Today': [moment().utc().startOf('day'), moment().endOf('day').utc()],
                                             'This Month': [moment().utc().startOf('month'), moment().endOf('month').utc()]
                                         }}
@@ -342,7 +388,7 @@ class App extends React.Component<{}, IState> {
                                 <TreeSelect {...tProps} />
                                 <Button onClick={this.handleShowSettings}>Settings</Button>
                             </div>
-                            <Tooltip placement="left" title="(Enter)">
+                            <Tooltip placement="left" title="(Enter) - Results are often delayed 1-3 minutes.">
                                 <Button type={hasNewQuery ? "primary" : "dashed"} className="refreshbtn" onClick={this.handleRefresh}>Refresh</Button>
                             </Tooltip>
                         </header>
@@ -675,8 +721,9 @@ class ConsoleRow extends React.Component<IConsoleRowProps, any> {
         return (
             <div className="consoleRow" key={r.get("itemId")}>
                 <Tooltip placement="topLeft" title={r.get("cloud_RoleInstance")}>
-                    <div className="id">{r.get("cloud_RoleInstance")}</div>
+                    <div className="roleInstance link">{r.get("cloud_RoleInstance")}</div>
                 </Tooltip>
+                <div className="roleName link" onClick={this.setRoleName}>{r.get("cloud_RoleName")}</div>
                 <div className="timestamp">{moment(r.get("timestamp")).format("YYYY-MM-DD HH:mm:ss:SSS")}</div>
                 <Icon className="details" type="message" onClick={this.showDetails} />                
                 <div className={"loglevel " + severityLevel} onClick={this.setSeverity}>{severityLevel}</div>
@@ -690,6 +737,12 @@ class ConsoleRow extends React.Component<IConsoleRowProps, any> {
     private setOpid = () => {
         this.props.setGrep({
             grep: this.props.row.get("operation_Id").toString()
+        })
+    }
+
+    private setRoleName = () => {
+        this.props.setGrep({
+            grep: this.props.row.get("cloud_RoleInstance").toString()
         })
     }
 
