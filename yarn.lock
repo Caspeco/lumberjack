@@ -6738,6 +6738,10 @@ schema-utils@^0.4.0, schema-utils@^0.4.5:
     ajv "^6.1.0"
     ajv-keywords "^3.1.0"
 
+search-string@^3.1.0:
+  version "3.1.0"
+  resolved "https://registry.yarnpkg.com/search-string/-/search-string-3.1.0.tgz#3f111c6919a33de33a8e304fd5f8395c3d806ffb"
+
 select-hose@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/select-hose/-/select-hose-2.0.0.tgz#625d8658f865af43ec962bfc376a37359a4994ca"

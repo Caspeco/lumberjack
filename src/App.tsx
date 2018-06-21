@@ -1,5 +1,5 @@
 /* tslint:disable */
-import { Select, message, Modal, Icon, DatePicker,Divider, Button, Input, Tooltip, TreeSelect } from 'antd';
+import { Select, message, Modal, Icon, DatePicker,Divider, Button, Input, Tooltip, TreeSelect, notification  } from 'antd';
 import momentjson from 'moment-json-parser';
 const RangePicker = DatePicker.RangePicker;
 const Option = Select.Option;
@@ -14,6 +14,9 @@ import { List, fromJS, Map } from "immutable";
 import Worker from 'worker-loader!./worker.js';
 import transit from 'transit-immutable-js';
 import { Provider, Subscribe, Container } from 'unstated';
+
+import SearchString from 'search-string';
+
 const worker = new Worker();
 
 type ILogState = {
@@ -102,8 +105,19 @@ async function async_fetch(url: string, conf: {}) {
     if (response.ok) {
         console.log("Response Age: ", response.headers["age"]);
         return await response.json()
+    } else if(response.status === 400) {
+        throw new BadRequestError(response);
     }
     throw new Error(response.status.toString())
+}
+
+class BadRequestError extends Error {
+    public response: Response;
+    constructor(response: Response) {
+        super();
+        Object.setPrototypeOf(this, BadRequestError.prototype);
+        this.response = response;
+    }
 }
 
 interface IQueryObject {
@@ -130,10 +144,10 @@ function translateSeverityLevelFromTree(val: string[]) {
     });    
 }
 
-function where(fields: string[], value: string, positive: boolean = true) {
+function where(fields: string[], value: string, negated: boolean) {
     let q = "| where ";
     fields.forEach(field => {
-        q += `${field} ${positive ? "": "!"}contains "${value}" ${positive ? "or" : "and"} `;
+        q += `${field} ${negated ? "!": ""}contains "${value}" ${negated ? "and" : "or"} `;
     });
     console.log("Where thing?", q);
     return q.substr(0, q.length - 4);
@@ -162,9 +176,15 @@ async function async_fetch_data(appId: string, appKey: string, query: IQueryObje
         grep = grep.replace(match[0],"");
         match = excludeRegExp.exec(query.grep);        
     }
-    console.log("grep", grep);
-    console.log("excludes", excludes);
+    console.log("grep", query.grep);
 
+    var pq = SearchString.parse(query.grep);
+    console.log(pq);
+    console.log("txt", pq.getTextSegments());
+    console.log("ca", pq.getConditionArray());
+    console.log("pq", pq.getParsedQuery());
+    const txtSegments: any[] = pq.getTextSegments();
+    const conditions: any[] = pq.getConditionArray();
     const fieldsToGrep = ["message", "operation_Id", "customDimensions", "user_Id", "cloud_RoleInstance", "cloud_RoleName"];
 
     const q2 = `
@@ -176,8 +196,8 @@ async function async_fetch_data(appId: string, appKey: string, query: IQueryObje
     | where timestamp between(datetime(${query.timeRange.from.format("YYYY-MM-DD HH:mm:ss")}) .. datetime(${to.format("YYYY-MM-DD HH:mm:ss")}))
     | project-away message 
     | project-rename message = message2
-    ${where(fieldsToGrep, escapeai(grep))}
-    ${excludes.map(exclusion => where(fieldsToGrep, escapeai(exclusion as string), false)).join(" ")}
+    ${txtSegments.map(ts => where(fieldsToGrep, escapeai(ts.text), ts.negated)).join("\n")}
+    ${conditions.map(condition => where([condition.keyword], escapeai(condition.value), condition.negated)).join("\n")}
     | ${severityLevel}
     | order by timestamp ${query.orderBy}, itemId desc
     `;
@@ -605,11 +625,35 @@ class App extends React.Component<{}, IState> {
         let d: InsightsResponse
         try {
             d = await async_fetch_data(this.state.settings.currentApp.appId || "", this.state.settings.currentApp.apiKey || "", this.state.query);
+            message.success('Success!', 1.5);
         } catch (error) {
+            
+
+            console.log(error, error instanceof BadRequestError);
             console.error("Failed", error);
 
             // do not warn on manual abort
-            if (error.code !== 20) {
+            if(error instanceof BadRequestError) {
+                var data = await error.response.json();
+                console.log("bad data", data);
+                const key = `open${Date.now()}`;
+                const btn = (
+                    <Button type="primary" size="small" onClick={() => notification.close(key)}>
+                    Close
+                    </Button>
+                );
+                notification.error({
+                    key: key,
+                    btn: btn,
+                    duration: 20,
+                    message: 'Error: ' + data.error.message,
+                    description: (<div>
+                        <strong>{data.error.innererror.message}</strong>
+                        <p>{data.error.innererror.innererror.message}</p>
+                    </div>),
+                  });
+            }
+            else if (error.code !== 20) {
                 message.error('Failed to fetch data from AppInsights, check your settings');
             }
             return;
@@ -721,7 +765,7 @@ class ConsoleRow extends React.Component<IConsoleRowProps, any> {
         return (
             <div className="consoleRow" key={r.get("itemId")}>
                 <Tooltip placement="topLeft" title={r.get("cloud_RoleInstance")}>
-                    <div className="roleInstance link">{r.get("cloud_RoleInstance")}</div>
+                    <div className="roleInstance link" onClick={this.setRoleInstance}>{r.get("cloud_RoleInstance")}</div>
                 </Tooltip>
                 <Tooltip placement="topLeft" title={r.get("cloud_RoleName")}>
                     <div className="roleName link" onClick={this.setRoleName}>{r.get("cloud_RoleName")}</div>
@@ -738,13 +782,19 @@ class ConsoleRow extends React.Component<IConsoleRowProps, any> {
 
     private setOpid = () => {
         this.props.setGrep({
-            grep: this.props.row.get("operation_Id").toString()
+            grep: `operation_Id:"${this.props.row.get("operation_Id").toString()}"`
+        })
+    }
+
+    private setRoleInstance = () => {
+        this.props.setGrep({
+            grep: `cloud_RoleInstance:"${this.props.row.get("cloud_RoleInstance").toString()}"`
         })
     }
 
     private setRoleName = () => {
         this.props.setGrep({
-            grep: this.props.row.get("cloud_RoleName").toString()
+            grep: `cloud_RoleName:"${this.props.row.get("cloud_RoleName").toString()}"`
         })
     }
 

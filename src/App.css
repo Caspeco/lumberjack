@@ -55,7 +55,7 @@
 
 .searchBar {
   grid-area: topleft;
-  width: 400px;
+  width: 600px;
 }
 
 .serachControls {

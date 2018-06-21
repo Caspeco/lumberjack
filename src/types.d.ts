@@ -4,3 +4,4 @@ declare module '@researchgate/react-intersection-list';
 declare module 'worker-loader!./worker.js';
 declare module 'transit-immutable-js';
 declare module 'query-string';
+declare module 'search-string';
