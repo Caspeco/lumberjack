@@ -320,6 +320,9 @@ class App extends React.Component<{}, IState> {
             currentQuery: 0
         }
 
+        // @ts-ignore
+        window.document.title = this.state.settings.currentApp.name + " - Lumberjack";
+
         //let cachedRows = List();
         worker.onmessage = (event: any) => {
             console.time("des");
@@ -513,6 +516,8 @@ class App extends React.Component<{}, IState> {
         });
 
         localStorage.setItem("settings", JSON.stringify(this.state.settings));
+        // @ts-ignore
+        window.document.title = this.state.settings.currentApp.name + " - Lumberjack";
     }
 
     private handleSettingsclose = () => {
