@@ -149,7 +149,7 @@ async function async_fetch_data(appId: string, appKey: string, query: IQueryObje
     console.warn(to);
 
 
-    let excludeRegExp = new RegExp(/\W(-(\w*))/g);
+    let excludeRegExp = new RegExp(/(?: |^)(-(\w*))/g);
     
     let match = excludeRegExp.exec(query.grep);
     let grep = query.grep;
@@ -177,7 +177,7 @@ async function async_fetch_data(appId: string, appKey: string, query: IQueryObje
     | project-away message 
     | project-rename message = message2
     ${where(fieldsToGrep, escapeai(grep))}
-    ${excludes.map(exclusion => where(fieldsToGrep, escapeai(exclusion as string), false)).join(",")}
+    ${excludes.map(exclusion => where(fieldsToGrep, escapeai(exclusion as string), false)).join(" ")}
     | ${severityLevel}
     | order by timestamp ${query.orderBy}, itemId desc
     `;
