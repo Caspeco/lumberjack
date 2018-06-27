@@ -23,13 +23,18 @@ import "./App.css";
 // import Observer from '@researchgate/react-intersection-observer';
 import DynamicList from "@researchgate/react-intersection-list";
 import { List, fromJS, Map } from "immutable";
+import WorkerOld from "worker-loader!./workerOld.js";
 import Worker from "worker-loader!./worker.js";
 import transit from "transit-immutable-js";
 import { Provider, Subscribe, Container } from "unstated";
+import BadRequestError from "./badrequesterror";
 
 import SearchString from "search-string";
+import EventWorker from "event-worker";
 
-const worker = new Worker();
+const worker = new WorkerOld();
+
+const asyncWorker = new Worker();
 
 type ILogState = {
   rows: List<any>;
@@ -194,35 +199,35 @@ class LogContainer extends Container<ILogState> {
 }
 let logContainer = new LogContainer();
 
+/*
+
+DATA 
+
+*/
+
+const worker1 = new EventWorker(asyncWorker);
+// worker1.emit("HELLO", "WORLD");
+
 const API_BASE = "https://api.applicationinsights.io/v1/apps/";
 
-let controllers = {};
-async function async_fetch(url: string, conf: any) {
-  if (controllers[conf.requestId]) {
-    console.warn("abort");
-    controllers[conf.requestId].abort();
-  }
-  controllers[conf.requestId] = new AbortController();
+// let controllers = {};
+// async function async_fetch(url: string, conf: any) {
+//   if (controllers[conf.requestId]) {
+//     console.warn("abort");
+//     controllers[conf.requestId].abort();
+//   }
+//   controllers[conf.requestId] = new AbortController();
 
-  const signal = controllers[conf.requestId].signal;
-  const response = await fetch(url, { ...conf, signal });
-  if (response.ok) {
-    console.log("Response Age: ", response.headers["age"]);
-    return await response.json();
-  } else if (response.status === 400) {
-    throw new BadRequestError(response);
-  }
-  throw new Error(response.status.toString());
-}
-
-class BadRequestError extends Error {
-  public response: Response;
-  constructor(response: Response) {
-    super();
-    Object.setPrototypeOf(this, BadRequestError.prototype);
-    this.response = response;
-  }
-}
+//   const signal = controllers[conf.requestId].signal;
+//   const response = await fetch(url, { ...conf, signal });
+//   if (response.ok) {
+//     console.log("Response Age: ", response.headers["age"]);
+//     return await response.json();
+//   } else if (response.status === 400) {
+//     throw new BadRequestError(response);
+//   }
+//   throw new Error(response.status.toString());
+// }
 
 interface IQueryObject {
   timeRange: {
@@ -319,55 +324,56 @@ function getAiQueries(query: IQueryObject) {
   const take = query.take;
   const logQuery = `${q2}
   | order by timestamp ${query.orderBy}, itemId desc
+  | skip 1
   | take ${take}
   `;
 
   return { logQuery, graphQuery};
 }
 
-async function async_fetch_data(
-  appId: string,
-  appKey: string,
-  graphQuery: string,
-  logQuery: string
-) {
-  console.info("Graph Query", graphQuery);
+// async function async_fetch_data(
+//   appId: string,
+//   appKey: string,
+//   graphQuery: string,
+//   logQuery: string
+// ) {
+//   console.info("Graph Query", graphQuery);
 
-  console.info("Log Query", logQuery);
+//   console.info("Log Query", logQuery);
 
-  const t1 = async_fetch(API_BASE + appId + "/query", {
-    requestId: "logdata",
-    body: JSON.stringify({ query: logQuery }),
-    headers: {
-      "x-api-key": appKey,
-      "content-type": "application/json"
-      // 'Cache-Control': 'no-cache' //'max-age=' + (query.maxAge || 30), this should be added as option
-    },
-    method: "POST"
-  });
+//   const t1 = async_fetch(API_BASE + appId + "/query", {
+//     requestId: "logdata",
+//     body: JSON.stringify({ query: logQuery }),
+//     headers: {
+//       "x-api-key": appKey,
+//       "content-type": "application/json"
+//       // 'Cache-Control': 'no-cache' //'max-age=' + (query.maxAge || 30), this should be added as option
+//     },
+//     method: "POST"
+//   });
 
-  const t2 = async_fetch(API_BASE + appId + "/query", {
-    requestId: "graphdata",
-    body: JSON.stringify({ query: graphQuery }),
-    headers: {
-      "x-api-key": appKey,
-      "content-type": "application/json"
-      // 'Cache-Control': 'no-cache' //'max-age=' + (query.maxAge || 30), this should be added as option
-    },
-    method: "POST"
-  });
+//   const t2 = async_fetch(API_BASE + appId + "/query", {
+//     requestId: "graphdata",
+//     body: JSON.stringify({ query: graphQuery }),
+//     headers: {
+//       "x-api-key": appKey,
+//       "content-type": "application/json"
+//       // 'Cache-Control': 'no-cache' //'max-age=' + (query.maxAge || 30), this should be added as option
+//     },
+//     method: "POST"
+//   });
 
-  return {
-    logPromise: t1,
-    graphPromise: t2
-  };
-}
+//   return {
+//     logPromise: t1,
+//     graphPromise: t2
+//   };
+// }
 
-interface InsightsResponse {
-  tables: Array<{
-    rows: any[][];
-  }>;
-}
+// interface InsightsResponse {
+//   tables: Array<{
+//     rows: any[][];
+//   }>;
+// }
 
 interface IState {
   columns: any;
@@ -479,25 +485,42 @@ class App extends React.Component<{}, IState> {
       this.state.settings.currentApp.name + " - Lumberjack";
 
     //let cachedRows = List();
-    worker.onmessage = (event: any) => {
-      console.time("des");
-      switch (event.data.topic) {
+    // worker.onmessage = (event: any) => {
+    //   console.time("des");
+    //   switch (event.data.topic) {
+    //     case "new":
+    //     case "con":
+    //     const newRows = transit.fromJSON(event.data.payload);
+    //     case "new":         
+    //       logContainer.set(newRows);    
+    //       break;
+    //     case "con":
+    //       logContainer.set(newRows);
+    //       break;
+    //     case "fetch":
+    //       console.info("should fetch");
+    //     default:
+    //       break;
+    //   }
+    //   console.timeEnd("des");
+    // };
+
+    worker1.on("logdata", ({payload}:any) => {
+      switch (payload.topic) {
         case "new":
         case "con":
-        const newRows = transit.fromJSON(event.data.payload);
+        const newRows = transit.fromJSON(payload.data);
         case "new":         
           logContainer.set(newRows);    
           break;
         case "con":
           logContainer.set(newRows);
           break;
-        case "fetch":
-          console.info("should fetch");
+      
         default:
           break;
       }
-      console.timeEnd("des");
-    };
+    })
   }
 
   public async componentDidMount() {
@@ -911,25 +934,33 @@ class App extends React.Component<{}, IState> {
       lastQuery: fromJS(this.state.query)
     });
 
-    let d: InsightsResponse;
+    const queries = getAiQueries(this.state.query);
     try {
-      const queries = getAiQueries(this.state.query);
+      // var res2 = await worker1.emit("fetchData", {query: queries.logQuery})
+      const appId = this.state.settings.currentApp.appId || "";
+      const apiKey = this.state.settings.currentApp.apiKey || "";
+      const baseSettings = {
+        url: API_BASE + appId + "/query",
+        apiKey: apiKey
+      };
+      
+      var graphRes = worker1.emit("fetchGraphData", {
+        ...baseSettings,
+        query: queries.graphQuery});
 
-      const res = await async_fetch_data(
-        this.state.settings.currentApp.appId || "",
-        this.state.settings.currentApp.apiKey || "",
-        queries.graphQuery,
-        queries.logQuery
-      );
-
+      var logRes = worker1.emit("start-fetchLogData", {
+          ...baseSettings,
+          query: queries.logQuery});    
+      
+      console.log("GRAPH RES", await graphRes);
       this.setState({
-        graphData: await res.graphPromise
+        graphData: await graphRes
       });
-
-      d = await res.logPromise;
+      console.log("DOOOOONE", await logRes);
 
       message.success("Success!", 1.5);
-    } catch (error) {
+    }
+    catch (error) {
       console.log(error, error instanceof BadRequestError);
       console.error("Failed", error);
 
@@ -968,9 +999,67 @@ class App extends React.Component<{}, IState> {
     } finally {
       hide();
     }
+      
 
-    worker.postMessage({ topic: "json", payload: d });
-    console.timeEnd();
+    // let d: InsightsResponse;
+    // try {
+      
+    //   const res = await async_fetch_data(
+    //     this.state.settings.currentApp.appId || "",
+    //     this.state.settings.currentApp.apiKey || "",
+    //     queries.graphQuery,
+    //     queries.logQuery
+    //   );
+
+    //   this.setState({
+    //     graphData: await res.graphPromise
+    //   });
+
+    //   d = await res.logPromise;
+      
+    //   message.success("Success!", 1.5);
+    // } catch (error) {
+    //   console.log(error, error instanceof BadRequestError);
+    //   console.error("Failed", error);
+
+    //   // do not warn on manual abort
+    //   if (error instanceof BadRequestError) {
+    //     var data = await error.response.json();
+    //     console.log("bad data", data);
+    //     const key = `open${Date.now()}`;
+    //     const btn = (
+    //       <Button
+    //         type="primary"
+    //         size="small"
+    //         onClick={() => notification.close(key)}
+    //       >
+    //         Close
+    //       </Button>
+    //     );
+    //     notification.error({
+    //       key: key,
+    //       btn: btn,
+    //       duration: 20,
+    //       message: "Error: " + data.error.message,
+    //       description: (
+    //         <div>
+    //           <strong>{data.error.innererror.message}</strong>
+    //           <p>{data.error.innererror.innererror.message}</p>
+    //         </div>
+    //       )
+    //     });
+    //   } else if (error.code !== 20) {
+    //     message.error(
+    //       "Failed to fetch data from AppInsights, check your settings"
+    //     );
+    //   }
+    //   return;
+    // } finally {
+    //   hide();
+    // }
+
+    // worker.postMessage({ topic: "json", payload: d });
+    // console.timeEnd();
   }
 }
 
