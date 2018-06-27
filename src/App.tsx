@@ -110,7 +110,7 @@ class TimeChart extends React.Component<any, any> {
               <ChartRow height="100">
                 <YAxis
                   id="axis1"
-                  visible={false}
+                  visible={true}
                   label=""
                   min={0}
                   max={timeseries.max() * 1.1}
@@ -318,12 +318,14 @@ async function async_fetch_data(
   appKey: string,
   finalizedQuery: string
 ) {
-  // const q = `${query.source}
-  // | where message contains "${query.grep}"
-  // | where timestamp between(datetime(${query.timeRange.from.utc().format("YYYY-MM-DD HH:mm:ss")}) .. datetime(${query.timeRange.to.utc().format("YYYY-MM-DD HH:mm:ss")}))
-  // | order by timestamp ${query.orderBy}
-  // `;
-  console.info(finalizedQuery);
+  
+
+const graphQuery = `${finalizedQuery}
+    | summarize count() by bin(timestamp, 1m)
+    | order by timestamp asc
+`;
+
+  console.info("Log Query", finalizedQuery);
   const t1 =  async_fetch(API_BASE + appId + "/query", {
     requestId: "logdata",
     body: JSON.stringify({ query: finalizedQuery }),
@@ -335,10 +337,8 @@ async function async_fetch_data(
     method: "POST"
   });
 
-  const graphQuery = `${finalizedQuery}
-    | summarize count() by bin(timestamp, 1m)
-    | order by timestamp asc
-  `
+  console.info("Graph Query", finalizedQuery);
+  
 
   const t2 = async_fetch(API_BASE + appId + "/query", {
     requestId: "graphdata",
