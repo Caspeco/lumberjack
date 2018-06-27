@@ -1,35 +1,42 @@
 /* tslint:disable */
-import transit from 'transit-immutable-js';
+import transit from "transit-immutable-js";
 import { List, Map, fromJS, Record } from "immutable";
 
-const RowRecord = Record({
-    itemId: null,
-    timestamp: null,
-    severityLevel: null,
-    itemType: null,
-    message: null,
-    fields: Map()
-
-}, "Row");
+const RowRecord = Record(
+    {
+        itemId: null,
+        timestamp: null,
+        severityLevel: null,
+        itemType: null,
+        message: null,
+        fields: Map()
+    },
+    "Row"
+);
 
 let parsedRows = List();
 let allUnparsedRows = List();
 let unparsedTable = null;
 
-onmessage = function (ev) {
+const DEFAULT_PRELOAD = 200;
+
+let skip_current = 0;
+let take_current = 50;
+
+onmessage = function(ev) {
     if (ev.data.topic === "json") {
         parse(ev);
     } else if (ev.data.topic === "loadmore") {
         console.log("worker: should load more");
         const skip = ev.data.payload.skip;
         const take = ev.data.payload.take;
-        sendBatch(skip, take, false)
+        sendBatch(skip, take, false);
     }
-}
+};
 
 let hasSent = false;
 function sendFirstBatch() {
-    console.warn("worker: Sending first batch...")
+    console.warn("worker: Sending first batch...");
     sendBatch(0, 50, true);
     hasSent = true;
 }
@@ -41,41 +48,79 @@ function sendBatch(skip, take, isNew) {
     //     console.log("worker: aborted 'con' sendBatch because we are empty");
     //     return;
     // }
+
+    // should flag if we send rows.count() == while waiting for new fetch
+
     const json = transit.toJSON(rows);
     postMessage({ topic: isNew ? "new" : "con", payload: json });
-
-    console.log("worker: Prepare next batch.", "currently parsed:", parsedRows.count())
-    parseParts(skip + take, take, false);
+    const table = unparsedTable;
+    console.log("should fetch? ", table.get("rows").count(),(skip + take + DEFAULT_PRELOAD))
+    if (table.get("rows").count() < (skip + take + DEFAULT_PRELOAD)) {
+        console.log("worker: Ask client for more data.", "currently parsed:", parsedRows.count(), "out of", allUnparsedRows.count());
+        postMessage({
+            topic: "fetch",
+            payload: {
+                skip: allUnparsedRows.count()
+            }
+        });
+    }
+    console.log("worker: Prepare next batch.", "currently parsed:", parsedRows.count());
+    skip_current += take;
+    parseParts(skip_current, take, false);
 }
 
-function parse(ev) {
+function parsePaged(ev) {
+    // hasSent = false;
+    // parsedRows = List();
+    // allUnparsedRows = List();
+    // unparsedTable = null;
+    // js-lint
+    const table = fromJS(ev.data.payload.tables[0]);
+    // unparsedTable = table;
+
+    // add new rows to existing table
+    const unparsedRows = table.get("rows");
+    unparsedTable = unparseTable.updateIn(["rows"], arr => arr.push(unparsedRows));
+
+    allUnparsedRows.push(unparsedRows);
+
+    parseParts(skip_current, take_current, true);
+}
+
+function resetState() {
+    skip_current = 0;
+    take_current = 50;
     hasSent = false;
     parsedRows = List();
     allUnparsedRows = List();
     unparsedTable = null;
+}
+
+function parse(ev) {
+    resetState();
+    console.warn("PARSING");
     // js-lint
     const table = fromJS(ev.data.payload.tables[0]);
     unparsedTable = table;
-    const unparsedRows = table.get('rows');
+    const unparsedRows = table.get("rows");
     allUnparsedRows = unparsedRows;
-    const stepSize = 50;
 
-    parseParts(0, stepSize, true);   
+    parseParts(skip_current, take_current, true);
 }
 
 function parseParts(skip, take, send) {
     console.time("workerparseParts");
-    console.log("worker: parseParts started", "skip:", skip, "take:", take, "send: ",  send);
+    console.log("worker: parseParts started", "skip:", skip, "take:", take, "send: ", send);
     const table = unparsedTable;
+    console.warn("table",table)
     if (!table) return;
     const columns = table.get("columns");
-    const unparsedRows = table.get('rows');
+    const unparsedRows = table.get("rows");
     // const stepSize = 50;
 
     let rows = unparsedRows.skip(skip).take(take);
     // console.log(count, allRows.count());
     rows = rows.map((row, index) => {
-
         const fields = row.toOrderedMap().mapEntries((entry, index2) => {
             // console.log("entrye", entry,index2);
             return [columns.getIn([index2, "name"]), entry[1]];
@@ -93,11 +138,10 @@ function parseParts(skip, take, send) {
 
     // console.log(rows);
 
-    
     parsedRows = parsedRows.concat(rows).toList();
-    console.log("worker: Parsed pars done.", "new rows parsed: ", rows.count(), "total parsed", parsedRows.count());
-    if(send) {
+    console.log("worker: Parsed  done.", "new rows parsed: ", rows.count(), "total parsed", parsedRows.count());
+    if (send) {
         sendFirstBatch();
     }
-    console.timeEnd("workerparseParts")
+    console.timeEnd("workerparseParts");
 }

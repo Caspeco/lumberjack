@@ -79,8 +79,9 @@ import { TimeSeries, Index } from "pondjs";
 
 class TimeChart extends React.Component<any, any> {
   private handleTimeRangeChange = (d: any) => {
-    console.log("handle time chamnge", d, moment(d.begin()), moment(d.end()) );
-    if(this.props.onTimeRangeChange) this.props.onTimeRangeChange(moment(d.begin()), moment(d.end()));
+    console.log("handle time chamnge", d, moment(d.begin()), moment(d.end()));
+    if (this.props.onTimeRangeChange)
+      this.props.onTimeRangeChange(moment(d.begin()), moment(d.end()));
   };
   render() {
     if (!this.props.data) return null;
@@ -93,7 +94,7 @@ class TimeChart extends React.Component<any, any> {
         v[1]
       ])
     };
-    if(data.points.length === 0) return null;
+    if (data.points.length === 0) return null;
     console.log(data);
 
     const timeseries = new TimeSeries(data);
@@ -197,7 +198,6 @@ const API_BASE = "https://api.applicationinsights.io/v1/apps/";
 
 let controllers = {};
 async function async_fetch(url: string, conf: any) {
-  
   if (controllers[conf.requestId]) {
     console.warn("abort");
     controllers[conf.requestId].abort();
@@ -234,6 +234,7 @@ interface IQueryObject {
   //severityLevel: [1, 2, 3, 4];
   severityLevel: string[];
   maxAge?: number;
+  take: number;
 }
 
 function escapeai(str: string) {
@@ -260,7 +261,7 @@ function where(fields: string[], value: string, negated: boolean) {
   //return "message contains "${escapeai(grep)}" or operation_Id contains "${escapeai(grep)}" or customDimensions contains "${escapeai(grep)}" or user_Id contains "${escapeai(grep)}" or cloud_RoleInstance contains "${escapeai(grep)}"
 }
 
-function getAiQuery(query: IQueryObject) {
+function getAiQueries(query: IQueryObject) {
   const sl = translateSeverityLevelFromTree(query.severityLevel);
   const severityLevel =
     sl.length > 0 ? `where severityLevel in (${sl.join(",")})` : "";
@@ -307,28 +308,36 @@ function getAiQuery(query: IQueryObject) {
       )
       .join("\n")}
     | ${severityLevel}
-    | order by timestamp ${query.orderBy}, itemId desc
+    
     `;
 
-  return q2;
+  const graphQuery = `${q2}
+  | order by timestamp ${query.orderBy}, itemId desc
+    | summarize count() by bin(timestamp, 1m)
+    | order by timestamp asc
+  `;
+  const take = query.take;
+  const logQuery = `${q2}
+  | order by timestamp ${query.orderBy}, itemId desc
+  | take ${take}
+  `;
+
+  return { logQuery, graphQuery};
 }
 
 async function async_fetch_data(
   appId: string,
   appKey: string,
-  finalizedQuery: string
+  graphQuery: string,
+  logQuery: string
 ) {
-  
+  console.info("Graph Query", graphQuery);
 
-const graphQuery = `${finalizedQuery}
-    | summarize count() by bin(timestamp, 1m)
-    | order by timestamp asc
-`;
+  console.info("Log Query", logQuery);
 
-  console.info("Log Query", finalizedQuery);
-  const t1 =  async_fetch(API_BASE + appId + "/query", {
+  const t1 = async_fetch(API_BASE + appId + "/query", {
     requestId: "logdata",
-    body: JSON.stringify({ query: finalizedQuery }),
+    body: JSON.stringify({ query: logQuery }),
     headers: {
       "x-api-key": appKey,
       "content-type": "application/json"
@@ -336,9 +345,6 @@ const graphQuery = `${finalizedQuery}
     },
     method: "POST"
   });
-
-  console.info("Graph Query", finalizedQuery);
-  
 
   const t2 = async_fetch(API_BASE + appId + "/query", {
     requestId: "graphdata",
@@ -352,9 +358,9 @@ const graphQuery = `${finalizedQuery}
   });
 
   return {
-      tablePromise: t1,
-      graphPromise: t2
-  }
+    logPromise: t1,
+    graphPromise: t2
+  };
 }
 
 interface InsightsResponse {
@@ -425,6 +431,7 @@ class App extends React.Component<{}, IState> {
       },
       grep: "",
       severityLevel: ["1", "2", "3"],
+      take: 1000,
       ...existingQuery
     };
     const qsObject: any = location.search
@@ -474,16 +481,22 @@ class App extends React.Component<{}, IState> {
     //let cachedRows = List();
     worker.onmessage = (event: any) => {
       console.time("des");
-      const x = transit.fromJSON(event.data.payload);
-      if (event.data.topic === "new") {
-        logContainer.set(x);
-      } else {
-        logContainer.add(x);
+      switch (event.data.topic) {
+        case "new":
+        case "con":
+        const newRows = transit.fromJSON(event.data.payload);
+        case "new":         
+          logContainer.set(newRows);    
+          break;
+        case "con":
+          logContainer.set(newRows);
+          break;
+        case "fetch":
+          console.info("should fetch");
+        default:
+          break;
       }
       console.timeEnd("des");
-
-      // cachedRows = cachedRows.concat(x).toList();
-      //this.setit(cachedRows);
     };
   }
 
@@ -534,7 +547,10 @@ class App extends React.Component<{}, IState> {
       ? this.state.query.timeRange.to
       : undefined) as moment.Moment;
 
-    const currentTimeRangeValue: [moment.Moment,moment.Moment] = [this.state.query.timeRange.from, to];
+    const currentTimeRangeValue: [moment.Moment, moment.Moment] = [
+      this.state.query.timeRange.from,
+      to
+    ];
     return (
       <Provider inject={[logContainer]}>
         <Subscribe to={[LogContainer]}>
@@ -613,7 +629,10 @@ class App extends React.Component<{}, IState> {
                       Refresh
                     </Button>
                   </Tooltip>
-                  <TimeChart data={this.state.graphData} onTimeRangeChange={this.handleTimeRangeChange} />
+                  <TimeChart
+                    data={this.state.graphData}
+                    onTimeRangeChange={this.handleTimeRangeChange}
+                  />
                 </header>
 
                 <ConsoleView
@@ -785,10 +804,9 @@ class App extends React.Component<{}, IState> {
     });
   };
   private handleTimeRangeChange = (from: moment.Moment, to: moment.Moment) => {
-        
-      const ms: [moment.Moment] = [from, to] as any;
-    this.rangeChange(ms, [])
-  }
+    const ms: [moment.Moment] = [from, to] as any;
+    this.rangeChange(ms, []);
+  };
   private rangeChange = (dates: [moment.Moment], dateStrings: string[]) => {
     this.setState(ps => {
       return {
@@ -895,19 +913,20 @@ class App extends React.Component<{}, IState> {
 
     let d: InsightsResponse;
     try {
-      const query = getAiQuery(this.state.query);
+      const queries = getAiQueries(this.state.query);
 
       const res = await async_fetch_data(
         this.state.settings.currentApp.appId || "",
         this.state.settings.currentApp.apiKey || "",
-        query
+        queries.graphQuery,
+        queries.logQuery
       );
 
       this.setState({
-          graphData: await res.graphPromise
+        graphData: await res.graphPromise
       });
 
-      d = await res.tablePromise;
+      d = await res.logPromise;
 
       message.success("Success!", 1.5);
     } catch (error) {
