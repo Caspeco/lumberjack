@@ -202,7 +202,7 @@ class TimeChart extends React.Component<any, any> {
                       warning: {
                         normal: {
                           fill: "#FFA500",
-                          opacity: 0.5
+                          opacity: 0.7
                         },
                         highlighted: {
                           fill: "#a7c4dd",
@@ -220,7 +220,7 @@ class TimeChart extends React.Component<any, any> {
                       error: {
                         normal: {
                           fill: "#ff0000",
-                          opacity: 0.5
+                          opacity: 0.7
                         },
                         highlighted: {
                           fill: "#a7c4dd",
