@@ -123,7 +123,7 @@ worker1.on("loadmore", ({payload}) => {
 
 let hasSent = false;
 async function sendFirstBatch() {
-    console.warn("worker: Sending first batch...");
+    console.log("worker: Sending first batch...");
     await sendBatch(0, 50, true);
     hasSent = true;
 }
@@ -186,7 +186,7 @@ function resetState() {
 
 async function parse(ev) {
     resetState();
-    console.warn("PARSING", ev);
+    console.log("PARSING", ev);
     // js-lint
     const table = fromJS(ev.tables[0]);
     unparsedTable = table;
@@ -197,10 +197,9 @@ async function parse(ev) {
 }
 
 async function parseParts(skip, take, send) {
-    console.time("workerparseParts");
+    // console.time("workerparseParts");
     console.log("worker: parseParts started", "skip:", skip, "take:", take, "send: ", send);
     const table = unparsedTable;
-    console.warn("table", table);
     if (!table) return;
     const columns = table.get("columns");
     const unparsedRows = table.get("rows");
@@ -231,5 +230,5 @@ async function parseParts(skip, take, send) {
     if (send) {
         await sendFirstBatch();
     }
-    console.timeEnd("workerparseParts");
+    // console.timeEnd("workerparseParts");
 }

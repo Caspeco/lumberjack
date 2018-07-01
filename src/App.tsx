@@ -374,11 +374,12 @@ function getAiQueries(query: IQueryObject) {
   const severityLevel =
     sl.length > 0 ? `where severityLevel in (${sl.join(",")})` : "";
   // if to is null it should be now.
-  console.warn(query.timeRange.to);
-  const to = query.timeRange.to || moment().utc();
-  console.warn(to);
+  // console.warn(query.timeRange.to);
 
-  console.log("grep", query.grep);
+  const to = (query.timeRange.to || moment()).clone().utc();
+  const from = query.timeRange.from.clone().utc();
+
+  // console.warn(query.grep);
 
   var pq = SearchString.parse(query.grep);
   const txtSegments: any[] = pq.getTextSegments();
@@ -398,7 +399,7 @@ function getAiQueries(query: IQueryObject) {
     | union (
         traces
         | project-rename ["message2"] = message)
-    | where timestamp between(datetime(${query.timeRange.from.format(
+    | where timestamp between(datetime(${from.format(
       "YYYY-MM-DD HH:mm:ss"
     )}) .. datetime(${to.format("YYYY-MM-DD HH:mm:ss")}))
     | project-away message 
@@ -416,9 +417,9 @@ function getAiQueries(query: IQueryObject) {
     `;
       console.log("dbeug", query.timeRange.from.diff(to, "days"));
   let bucketSize =
-      to.diff(query.timeRange.from, "days") > 10 ? "6h"
-      : to.diff(query.timeRange.from, "hours") > 24 ? "1h"
-      : to.diff(query.timeRange.from, "hours") > 1 ? "5m"
+      to.diff(from, "days") > 10 ? "6h"
+      : to.diff(from, "hours") > 24 ? "1h"
+      : to.diff(from, "hours") > 1 ? "5m"
       : "1m";
 
   console.log("Bucket size", bucketSize);
@@ -438,7 +439,7 @@ function getAiQueries(query: IQueryObject) {
   | order by timestamp ${query.orderBy}, itemId desc
   | take ${take}
   `;
-
+      console.warn(logQuery);
   return { logQuery, graphQuery};
 }
 
@@ -530,10 +531,10 @@ class App extends React.Component<{}, IState> {
     };
     if (existingQuery && existingQuery.timeRange) {
       existingQuery.timeRange.from = existingQuery.timeRange.from
-        ? existingQuery.timeRange.from.utc()
+        ? existingQuery.timeRange.from
         : undefined;
       existingQuery.timeRange.to = existingQuery.timeRange.to
-        ? existingQuery.timeRange.to.utc()
+        ? existingQuery.timeRange.to
         : undefined;
     }
 
@@ -542,7 +543,6 @@ class App extends React.Component<{}, IState> {
       source: "traces",
       timeRange: {
         from: moment()
-          .utc()
           .subtract(1, "h"),
         to: null
       },
@@ -708,39 +708,31 @@ class App extends React.Component<{}, IState> {
                       ranges={{
                         "Last 30m": [
                           moment()
-                            .utc()
                             .subtract(30, "m")
                         ],
                         "Last 60m": [
                           moment()
-                            .utc()
                             .subtract(60, "m")
                         ],
                         "Last 2h": [
                           moment()
-                            .utc()
                             .subtract(2, "h")
                         ],
                         "Last 8h": [
                           moment()
-                            .utc()
                             .subtract(8, "h")
                         ],
                         Today: [
                           moment()
-                            .utc()
                             .startOf("day"),
                           moment()
                             .endOf("day")
-                            .utc()
                         ],
                         "This Month": [
                           moment()
-                            .utc()
                             .startOf("month"),
                           moment()
                             .endOf("month")
-                            .utc()
                         ]
                       }}
                       value={currentTimeRangeValue}
