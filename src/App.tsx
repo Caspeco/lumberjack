@@ -651,6 +651,36 @@ class App extends React.Component<{}, IState> {
                   showDetails={this.handleShowDetails}
                 />
                 <Modal
+                  title="Details"
+                  visible={this.state.showDetails !== null}
+                  width="90%"
+                  onCancel={() => this.setState({showDetails: null})}
+                  onOk={() => this.setState({showDetails: null})}
+                >
+                  {this.state.showDetails === null ? null : 
+                <div>
+                          <pre>
+                            {JSON.stringify(
+                              this.state.showDetails,
+                              (k, v) => {
+                                if (v === null || v === "") {
+                                  return undefined;
+                                  // } else if (typeof v === "string" && (v.indexOf("[") === 1 || v.indexOf("{") === 1)) {
+                                  //     console.warn("ye", v);
+                                  //     return JSON.stringify(v, null, 2);
+                                }
+
+                                //console.log(v, typeof v);
+
+                                return v;
+                              },
+                              2
+                            )}
+                          </pre>
+                        </div>
+                  }
+                </Modal>
+                <Modal
                   title="Settings"
                   visible={this.state.showSettings}
                   onOk={this.handleSettingsSave}
@@ -906,36 +936,21 @@ class App extends React.Component<{}, IState> {
   }
 
   private handleShowDetails = (r: any) => {
-    const obj = r.toJS();
-    Modal.info({
-      title: "Details",
-      content: (
-        <div>
-          <pre>
-            {JSON.stringify(
-              obj,
-              (k, v) => {
-                if (v === null || v === "") {
-                  return undefined;
-                  // } else if (typeof v === "string" && (v.indexOf("[") === 1 || v.indexOf("{") === 1)) {
-                  //     console.warn("ye", v);
-                  //     return JSON.stringify(v, null, 2);
-                }
+    // const obj = r.toJS();
+    // Modal.info({
+    //   title: "Details",
+    //   content: (
+        
+    //   ),
+    //   width: "80%"
+    // });
 
-                //console.log(v, typeof v);
-
-                return v;
-              },
-              2
-            )}
-          </pre>
-        </div>
-      ),
-      width: "80%"
-    });
-
-    this.setState({
-      showDetails: r
+    // var url = location.href;               //Save down the URL without hash.
+    location.href = "#"+r.get("itemId");                 //Go to the target element.
+    // history.replaceState(null,null as any,url);   //Don't like hashes. Changing it back.
+    console.log(r, r.toJS());
+    this.setState(() =>{
+      return {showDetails: r.toJS()}
     });
   };
 
@@ -1133,6 +1148,7 @@ class ConsoleRow extends React.Component<IConsoleRowProps, any> {
     const opId = r.get("operation_Id");
     return (
       <div className="consoleRow" key={r.get("itemId")}>
+        <a id={r.get("itemId")} className="anchor"></a>
         <Tooltip placement="topLeft" title={r.get("cloud_RoleInstance")}>
           <div className="roleInstance link" onClick={this.setRoleInstance}>
             {r.get("cloud_RoleInstance")}

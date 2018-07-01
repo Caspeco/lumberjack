@@ -200,6 +200,14 @@
   word-break: break-all;
 }
 
+a.anchor {
+  display: block;
+  position: relative;
+  top: calc(-255px - 3px); /* -3 is just for visual padding */
+  align-self:start;
+  visibility: hidden;
+}
+
 @keyframes App-logo-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
