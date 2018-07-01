@@ -36,6 +36,7 @@
   right:0;
   height: 260px;
   z-index:2;
+  box-shadow: 0 11px 15px #000000;
 }
 
 .topline {
@@ -207,7 +208,7 @@
 a.anchor {
   display: block;
   position: relative;
-  top: calc(-260px - 3px); /* -3 is just for visual padding */
+  top: calc(-260px - 9px); /* -3 is just for visual padding */
   align-self:start;
   visibility: hidden;
 }
