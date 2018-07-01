@@ -141,27 +141,22 @@ async function sendBatch(skip, take, isNew) {
     const json = transit.toJSON(rows);
     worker1.emit('logdata', {data:json, topic: isNew ? "new" : "con"});
     // postMessage({ topic: isNew ? "new" : "con", payload: json });
-    const table = unparsedTable;
-    console.log("should fetch? ", table.get("rows").count(), skip + take + DEFAULT_PRELOAD);
-    if (table.get("rows").count() < skip + take + DEFAULT_PRELOAD) {
-        console.log("worker: Ask client for more data.", "currently parsed:", parsedRows.count(), "out of", allUnparsedRows.count());
-        // postMessage({
-        //     topic: "fetch",
-        //     payload: {
-        //         skip: allUnparsedRows.count()
-        //     }
-        // });
-    }
+    // const table = unparsedTable;
+    // console.log("should fetch? ", table.get("rows").count(), skip + take + DEFAULT_PRELOAD);
+    // if (table.get("rows").count() < skip + take + DEFAULT_PRELOAD) {
+    //     console.log("worker: Ask client for more data.", "currently parsed:", parsedRows.count(), "out of", allUnparsedRows.count());
+    //     // postMessage({
+    //     //     topic: "fetch",
+    //     //     payload: {
+    //     //         skip: allUnparsedRows.count()
+    //     //     }
+    //     // });
+    // }
     console.log("worker: Prepare next batch.", "currently parsed:", parsedRows.count());
-    // skip_current += take;
     parseParts(skip + take, take, false);
 }
 
 function parsePaged(ev) {
-    // hasSent = false;
-    // parsedRows = List();
-    // allUnparsedRows = List();
-    // unparsedTable = null;
     // js-lint
     const table = fromJS(ev.tables[0]);
     // unparsedTable = table;
@@ -206,10 +201,8 @@ async function parseParts(skip, take, send) {
     // const stepSize = 50;
 
     let rows = unparsedRows.skip(skip).take(take);
-    // console.log(count, allRows.count());
     rows = rows.map((row, index) => {
         const fields = row.toOrderedMap().mapEntries((entry, index2) => {
-            // console.log("entrye", entry,index2);
             return [columns.getIn([index2, "name"]), entry[1]];
         });
         // const r =  new RowRecord({
@@ -223,12 +216,9 @@ async function parseParts(skip, take, send) {
         return fields;
     });
 
-    // console.log(rows);
-
     parsedRows = parsedRows.concat(rows).toList();
     console.log("worker: Parsed  done.", "new rows parsed: ", rows.count(), "total parsed", parsedRows.count());
     if (send) {
         await sendFirstBatch();
     }
-    // console.timeEnd("workerparseParts");
 }

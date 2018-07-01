@@ -91,58 +91,29 @@ class TimeChart extends React.Component<any, any> {
   };
   render() {
     if (!this.props.data) return null;
-    // const data = {
-    //   name: "entries",
-    //   columns: ["index", "value"],
-    //   //tz: "Etc/UTC",
-    //   points: this.props.data.tables[0].rows.map((v: any) => [
-    //     Index.getIndexString("1m", v[0]),
-    //     v[1]
-    //   ])
-    // };
-    
-    // console.log(data);
 
-    // const graphErrors = {
-    //   name: "errors",
-    //   columns: ["index", "value"],
-    //   //tz: "Etc/UTC",
-    //   points: this.props.data.tables[0].rows.map((v: any) => [
-    //     Index.getIndexString("1m", v[0]),
-    //     (v[1] / 10) * Math.random()
-    //   ])
-    // };
-    // const timeseries = new TimeSeries(data);
-    // const timeseries2 = new TimeSeries(graphErrors);
     const graphData = {
       name: "graphdata",
       columns: ["index", "trace", "warning", "error"],
       points: this.props.data.tables[0].rows.map((v: any) => {
-        // console.log("GD", v);
         return [
           Index.getIndexString("1m", v[0]),
           v[1],
           v[2],
-          v[3]
-          
+          v[3]          
         ]
       })
     }
 
     if (graphData.points.length === 0) return null;
 
-    // console.info("gd2", graphData);
     
     const timeseries3 = new TimeSeries(graphData);
-    // console.log("MAX?", timeseries3, timeseries3.max("error"));
-    // console.log(timeseries3);
-    //var timerange = timeseries.timerange()
+    const maxTraces = timeseries3.max("trace");
     const maxErrorWarnings = Math.max(
       timeseries3.max("warning"),
       timeseries3.max("error"));
-
-    const maxTraces = timeseries3.max("trace");
-    console.log("max traces", maxTraces);
+    
     const areaStyle = {
       trace: {
           line: {
@@ -158,11 +129,46 @@ class TimeChart extends React.Component<any, any> {
               muted: {fill: "steelblue", stroke: "none", opacity: 0.25}
           }
       }
-      // ,
-      // out: {
-      //     ...
-      // }
   };
+
+  const barStyle = {
+    warning: {
+      normal: {
+        fill: "#FFA500",
+        opacity: 0.7
+      },
+      highlighted: {
+        fill: "#a7c4dd",
+        opacity: 1.0
+      },
+      selected: {
+        fill: "orange",
+        opacity: 1.0
+      },
+      muted: {
+        fill: "grey",
+        opacity: 0.5
+      }
+    },
+    error: {
+      normal: {
+        fill: "#ff0000",
+        opacity: 0.7
+      },
+      highlighted: {
+        fill: "#a7c4dd",
+        opacity: 1.0
+      },
+      selected: {
+        fill: "orange",
+        opacity: 1.0
+      },
+      muted: {
+        fill: "grey",
+        opacity: 0.5
+      }
+    }
+  }
   
     return (
       <div className="graph">
@@ -178,7 +184,6 @@ class TimeChart extends React.Component<any, any> {
                   id="axis1"
                   visible={true}
                   label="Traces"
-                  // min={0}
                   min={0}
                   max={maxTraces * 1.1}
                   width="60"
@@ -197,45 +202,8 @@ class TimeChart extends React.Component<any, any> {
                     axis="axis2"
                     series={timeseries3}
                     columns={["warning","error"]}
-                    size={2}
-                    style={{
-                      warning: {
-                        normal: {
-                          fill: "#FFA500",
-                          opacity: 0.7
-                        },
-                        highlighted: {
-                          fill: "#a7c4dd",
-                          opacity: 1.0
-                        },
-                        selected: {
-                          fill: "orange",
-                          opacity: 1.0
-                        },
-                        muted: {
-                          fill: "grey",
-                          opacity: 0.5
-                        }
-                      },
-                      error: {
-                        normal: {
-                          fill: "#ff0000",
-                          opacity: 0.7
-                        },
-                        highlighted: {
-                          fill: "#a7c4dd",
-                          opacity: 1.0
-                        },
-                        selected: {
-                          fill: "orange",
-                          opacity: 1.0
-                        },
-                        muted: {
-                          fill: "grey",
-                          opacity: 0.5
-                        }
-                      }
-                    }}
+                    size={3}
+                    style={barStyle}
                   />
                   
                 </Charts>
@@ -244,8 +212,6 @@ class TimeChart extends React.Component<any, any> {
                   visible={true}
                   label="Errors"
                   min={0}
-                  // max={0}
-                  // max={100}
                   max={maxErrorWarnings * 1.1}
                   width="60"
                   type="linear"
@@ -309,28 +275,8 @@ DATA
 */
 
 const worker1 = new EventWorker(asyncWorker);
-// worker1.emit("HELLO", "WORLD");
 
 const API_BASE = "https://api.applicationinsights.io/v1/apps/";
-
-// let controllers = {};
-// async function async_fetch(url: string, conf: any) {
-//   if (controllers[conf.requestId]) {
-//     console.warn("abort");
-//     controllers[conf.requestId].abort();
-//   }
-//   controllers[conf.requestId] = new AbortController();
-
-//   const signal = controllers[conf.requestId].signal;
-//   const response = await fetch(url, { ...conf, signal });
-//   if (response.ok) {
-//     console.log("Response Age: ", response.headers["age"]);
-//     return await response.json();
-//   } else if (response.status === 400) {
-//     throw new BadRequestError(response);
-//   }
-//   throw new Error(response.status.toString());
-// }
 
 interface IQueryObject {
   timeRange: {
@@ -366,7 +312,6 @@ function where(fields: string[], value: string, negated: boolean) {
   });
   console.log("Where thing?", q);
   return q.substr(0, q.length - 4);
-  //return "message contains "${escapeai(grep)}" or operation_Id contains "${escapeai(grep)}" or customDimensions contains "${escapeai(grep)}" or user_Id contains "${escapeai(grep)}" or cloud_RoleInstance contains "${escapeai(grep)}"
 }
 
 function getAiQueries(query: IQueryObject) {
@@ -374,12 +319,9 @@ function getAiQueries(query: IQueryObject) {
   const severityLevel =
     sl.length > 0 ? `where severityLevel in (${sl.join(",")})` : "";
   // if to is null it should be now.
-  // console.warn(query.timeRange.to);
 
   const to = (query.timeRange.to || moment()).clone().utc();
   const from = query.timeRange.from.clone().utc();
-
-  // console.warn(query.grep);
 
   var pq = SearchString.parse(query.grep);
   const txtSegments: any[] = pq.getTextSegments();
@@ -442,44 +384,6 @@ function getAiQueries(query: IQueryObject) {
       console.warn(logQuery);
   return { logQuery, graphQuery};
 }
-
-// async function async_fetch_data(
-//   appId: string,
-//   appKey: string,
-//   graphQuery: string,
-//   logQuery: string
-// ) {
-//   console.info("Graph Query", graphQuery);
-
-//   console.info("Log Query", logQuery);
-
-//   const t1 = async_fetch(API_BASE + appId + "/query", {
-//     requestId: "logdata",
-//     body: JSON.stringify({ query: logQuery }),
-//     headers: {
-//       "x-api-key": appKey,
-//       "content-type": "application/json"
-//       // 'Cache-Control': 'no-cache' //'max-age=' + (query.maxAge || 30), this should be added as option
-//     },
-//     method: "POST"
-//   });
-
-//   const t2 = async_fetch(API_BASE + appId + "/query", {
-//     requestId: "graphdata",
-//     body: JSON.stringify({ query: graphQuery }),
-//     headers: {
-//       "x-api-key": appKey,
-//       "content-type": "application/json"
-//       // 'Cache-Control': 'no-cache' //'max-age=' + (query.maxAge || 30), this should be added as option
-//     },
-//     method: "POST"
-//   });
-
-//   return {
-//     logPromise: t1,
-//     graphPromise: t2
-//   };
-// }
 
 // interface InsightsResponse {
 //   tables: Array<{
@@ -595,27 +499,7 @@ class App extends React.Component<{}, IState> {
     window.document.title =
       this.state.settings.currentApp.name + " - Lumberjack";
 
-    //let cachedRows = List();
-    // worker.onmessage = (event: any) => {
-    //   console.time("des");
-    //   switch (event.data.topic) {
-    //     case "new":
-    //     case "con":
-    //     const newRows = transit.fromJSON(event.data.payload);
-    //     case "new":         
-    //       logContainer.set(newRows);    
-    //       break;
-    //     case "con":
-    //       logContainer.set(newRows);
-    //       break;
-    //     case "fetch":
-    //       console.info("should fetch");
-    //     default:
-    //       break;
-    //   }
-    //   console.timeEnd("des");
-    // };
-
+    
     worker1.on("logdata", ({payload}:any) => {
       console.log("on logdata", payload);
 
@@ -1103,67 +987,6 @@ class App extends React.Component<{}, IState> {
     } finally {
       hide();
     }
-      
-
-    // let d: InsightsResponse;
-    // try {
-      
-    //   const res = await async_fetch_data(
-    //     this.state.settings.currentApp.appId || "",
-    //     this.state.settings.currentApp.apiKey || "",
-    //     queries.graphQuery,
-    //     queries.logQuery
-    //   );
-
-    //   this.setState({
-    //     graphData: await res.graphPromise
-    //   });
-
-    //   d = await res.logPromise;
-      
-    //   message.success("Success!", 1.5);
-    // } catch (error) {
-    //   console.log(error, error instanceof BadRequestError);
-    //   console.error("Failed", error);
-
-    //   // do not warn on manual abort
-    //   if (error instanceof BadRequestError) {
-    //     var data = await error.response.json();
-    //     console.log("bad data", data);
-    //     const key = `open${Date.now()}`;
-    //     const btn = (
-    //       <Button
-    //         type="primary"
-    //         size="small"
-    //         onClick={() => notification.close(key)}
-    //       >
-    //         Close
-    //       </Button>
-    //     );
-    //     notification.error({
-    //       key: key,
-    //       btn: btn,
-    //       duration: 20,
-    //       message: "Error: " + data.error.message,
-    //       description: (
-    //         <div>
-    //           <strong>{data.error.innererror.message}</strong>
-    //           <p>{data.error.innererror.innererror.message}</p>
-    //         </div>
-    //       )
-    //     });
-    //   } else if (error.code !== 20) {
-    //     message.error(
-    //       "Failed to fetch data from AppInsights, check your settings"
-    //     );
-    //   }
-    //   return;
-    // } finally {
-    //   hide();
-    // }
-
-    // worker.postMessage({ topic: "json", payload: d });
-    // console.timeEnd();
   }
 }
 
