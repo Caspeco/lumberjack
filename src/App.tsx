@@ -544,11 +544,12 @@ class App extends React.Component<{}, IState> {
       <Select
         defaultValue={this.state.query.orderBy}
         onChange={this.handleChangeOrderBy}
+        value={this.state.query.orderBy}
       >
-        <Option value="desc">
+        <Option value="desc"  title={"Desc"}>
           <Icon type="arrow-down" />
         </Option>
-        <Option value="asc">
+        <Option value="asc" title={"Asc"}>
           <Icon type="arrow-up" />
         </Option>
       </Select>
@@ -564,7 +565,8 @@ class App extends React.Component<{}, IState> {
       showCheckedStrategy: TreeSelect.SHOW_CHILD,
       searchPlaceholder: "Please select severity",
       style: {
-        width: 300
+        width: 350,
+        marginLeft: "10px"
       }
     };
 
@@ -586,6 +588,7 @@ class App extends React.Component<{}, IState> {
             <HotKeys keyMap={map} handlers={handlers}>
               <div className="App">
                 <header className="App-header">
+                <div className="topline">
                   <div className="searchBar">
                     <Input.Search
                       placeholder="Grep for message..."
@@ -594,7 +597,11 @@ class App extends React.Component<{}, IState> {
                       onChange={this.handleSearchChange}
                       addonAfter={orderBy}
                     />
+                    </div>
+                    <TreeSelect {...tProps} />
+                    <Button onClick={this.handleShowSettings} style={{marginLeft:"10px"}}>Settings</Button>
                   </div>
+                  
                   <div className="searchControls">
                     <Button.Group size="small">
                     <Button onClick={() => this.setAgo("30m")}>Last 30m</Button>
@@ -609,6 +616,9 @@ class App extends React.Component<{}, IState> {
                       size="small"
                       className="timePicker"
                       defaultValue={[this.state.query.timeRange.from, to]}
+                      style={{
+                        marginLeft:"10px"
+                      }}
                       ranges={{
                         "Last 30m": [
                           moment()
@@ -645,8 +655,6 @@ class App extends React.Component<{}, IState> {
                       format="YYYY-MM-DD HH:mm:ss"
                       onChange={this.rangeChange}
                     />
-                    <TreeSelect {...tProps} />
-                    <Button onClick={this.handleShowSettings}>Settings</Button>
                   </div>
                   <Tooltip
                     placement="left"

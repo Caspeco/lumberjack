@@ -9,7 +9,7 @@
   grid-template-columns: auto;
   grid-template-rows: 200px auto; */
   position: relative;
-  padding-top:255px;
+  padding-top:260px;
 }
 
 .App-logo {
@@ -19,7 +19,6 @@
 
 .App-header {
   background-color: white;
-  /* height: 150px; */
   padding: 20px;
   color: white;
   display: grid;
@@ -35,14 +34,19 @@
   top:0;
   left:0;
   right:0;
-  height: 255px;
+  height: 260px;
   z-index:2;
+}
+
+.topline {
+  display:flex;
 }
 
 .graph {
   grid-area: bottom;
   height: 100%;
   width: 100%;
+  padding-top:10px;
 }
 
 .App-title {
@@ -203,7 +207,7 @@
 a.anchor {
   display: block;
   position: relative;
-  top: calc(-255px - 3px); /* -3 is just for visual padding */
+  top: calc(-260px - 3px); /* -3 is just for visual padding */
   align-self:start;
   visibility: hidden;
 }
