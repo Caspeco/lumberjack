@@ -186,8 +186,7 @@ class TimeChart extends React.Component<any, any> {
                   max={maxTraces * 1.1}
                   width="60"
                   type="linear"
-                  format=".0d"
-                  tickCount={6}
+                  format="~s"
                 />
                 <Charts>
                   <AreaChart
@@ -213,8 +212,7 @@ class TimeChart extends React.Component<any, any> {
                   max={maxErrorWarnings * 1.1}
                   width="60"
                   type="linear"
-                  format=".0d"
-                  tickCount={6}
+                  format="~s"
                 />
               </ChartRow>
             </ChartContainer>
@@ -322,6 +320,7 @@ function getAiQueries(query: IQueryObject) {
   const from = query.timeRange.from.clone().utc();
 
   var pq = SearchString.parse(query.grep);
+  // console.log("pq", pq.toString());
   const txtSegments: any[] = pq.getTextSegments();
   const conditions: any[] = pq.getConditionArray();
   const fieldsToGrep = [
@@ -422,6 +421,7 @@ const map = {
 };
 
 class App extends React.Component<{}, IState> {
+  
   /**
    *
    */
@@ -518,6 +518,15 @@ class App extends React.Component<{}, IState> {
     })
   }
 
+  private setAgo = (time: string) => {
+    const amount = parseInt(time.substr(0,2))
+    const unit = time[2];
+    this.handleTimeRangeChange(
+      this.state.query.timeRange.from = moment().subtract(amount as any, unit),
+      null as any as moment.Moment
+    );
+  }
+
   public async componentDidMount() {
     this.getData();
   }
@@ -569,6 +578,7 @@ class App extends React.Component<{}, IState> {
       this.state.query.timeRange.from,
       to
     ];
+
     return (
       <Provider inject={[logContainer]}>
         <Subscribe to={[LogContainer]}>
@@ -586,7 +596,17 @@ class App extends React.Component<{}, IState> {
                     />
                   </div>
                   <div className="searchControls">
+                    <Button.Group size="small">
+                    <Button onClick={() => this.setAgo("30m")}>Last 30m</Button>
+                    <Button onClick={() => this.setAgo("01h")}>Last 60m</Button>
+                    <Button onClick={() => this.setAgo("02h")}>Last 2h</Button>
+                    <Button onClick={() => this.setAgo("12h")}>Last 12h</Button>
+                    <Button onClick={() => this.setAgo("24h")}>Last 24h</Button>
+                    <Button onClick={() => this.setAgo("02d")}>Last 2d</Button>
+                    <Button onClick={() => this.setAgo("07d")}>Last week</Button>
+                    </Button.Group>
                     <RangePicker
+                      size="small"
                       className="timePicker"
                       defaultValue={[this.state.query.timeRange.from, to]}
                       ranges={{
@@ -619,6 +639,7 @@ class App extends React.Component<{}, IState> {
                             .endOf("month")
                         ]
                       }}
+                      
                       value={currentTimeRangeValue}
                       showTime
                       format="YYYY-MM-DD HH:mm:ss"
