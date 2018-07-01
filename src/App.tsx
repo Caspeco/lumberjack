@@ -98,76 +98,76 @@ class TimeChart extends React.Component<any, any> {
           Index.getIndexString("1m", v[0]),
           v[1],
           v[2],
-          v[3]          
+          v[3]
         ]
       })
     }
 
     if (graphData.points.length === 0) return null;
 
-    
+
     const timeseries3 = new TimeSeries(graphData);
     const maxTraces = timeseries3.max("trace");
     const maxErrorWarnings = Math.max(
       timeseries3.max("warning"),
       timeseries3.max("error"));
-    
+
     const areaStyle = {
       trace: {
-          line: {
-              normal: {stroke: "#666", fill: "none", strokeWidth: 1},
-              highlighted: {stroke: "#5a98cb", fill: "none", strokeWidth: 1},
-              selected: {stroke: "steelblue", fill: "none", strokeWidth: 1},
-              muted: {stroke: "steelblue", fill: "none", opacity: 0.4, strokeWidth: 1}
-          },
-          area: {
-              normal: {fill: "#eee", stroke: "none", opacity: 0.75},
-              highlighted: {fill: "#5a98cb", stroke: "none", opacity: 0.75},
-              selected: {fill: "steelblue", stroke: "none", opacity: 0.75},
-              muted: {fill: "steelblue", stroke: "none", opacity: 0.25}
-          }
+        line: {
+          normal: { stroke: "#666", fill: "none", strokeWidth: 1 },
+          highlighted: { stroke: "#5a98cb", fill: "none", strokeWidth: 1 },
+          selected: { stroke: "steelblue", fill: "none", strokeWidth: 1 },
+          muted: { stroke: "steelblue", fill: "none", opacity: 0.4, strokeWidth: 1 }
+        },
+        area: {
+          normal: { fill: "#eee", stroke: "none", opacity: 0.75 },
+          highlighted: { fill: "#5a98cb", stroke: "none", opacity: 0.75 },
+          selected: { fill: "steelblue", stroke: "none", opacity: 0.75 },
+          muted: { fill: "steelblue", stroke: "none", opacity: 0.25 }
+        }
       }
-  };
+    };
 
-  const barStyle = {
-    warning: {
-      normal: {
-        fill: "#FFA500",
-        opacity: 0.7
+    const barStyle = {
+      warning: {
+        normal: {
+          fill: "#FFA500",
+          opacity: 0.7
+        },
+        highlighted: {
+          fill: "#a7c4dd",
+          opacity: 1.0
+        },
+        selected: {
+          fill: "orange",
+          opacity: 1.0
+        },
+        muted: {
+          fill: "grey",
+          opacity: 0.5
+        }
       },
-      highlighted: {
-        fill: "#a7c4dd",
-        opacity: 1.0
-      },
-      selected: {
-        fill: "orange",
-        opacity: 1.0
-      },
-      muted: {
-        fill: "grey",
-        opacity: 0.5
-      }
-    },
-    error: {
-      normal: {
-        fill: "#ff0000",
-        opacity: 0.7
-      },
-      highlighted: {
-        fill: "#a7c4dd",
-        opacity: 1.0
-      },
-      selected: {
-        fill: "orange",
-        opacity: 1.0
-      },
-      muted: {
-        fill: "grey",
-        opacity: 0.5
+      error: {
+        normal: {
+          fill: "#ff0000",
+          opacity: 0.7
+        },
+        highlighted: {
+          fill: "#a7c4dd",
+          opacity: 1.0
+        },
+        selected: {
+          fill: "orange",
+          opacity: 1.0
+        },
+        muted: {
+          fill: "grey",
+          opacity: 0.5
+        }
       }
     }
-  }
-  
+
     return (
       <div className="graph">
         <div style={{}}>
@@ -188,22 +188,22 @@ class TimeChart extends React.Component<any, any> {
                   type="linear"
                   format=".0d"
                   tickCount={6}
-                />               
+                />
                 <Charts>
                   <AreaChart
                     axis="axis1"
                     series={timeseries3}
-                    columns={{up: ["trace"]}}
+                    columns={{ up: ["trace"] }}
                     style={areaStyle}
                   />
                   <BarChart
                     axis="axis2"
                     series={timeseries3}
-                    columns={["warning","error"]}
+                    columns={["warning", "error"]}
                     size={3}
                     style={barStyle}
                   />
-                  
+
                 </Charts>
                 <YAxis
                   id="axis2"
@@ -306,7 +306,7 @@ function where(fields: string[], value: string, negated: boolean) {
   fields.forEach(field => {
     q += `${field} ${negated ? "!" : ""}contains "${value}" ${
       negated ? "and" : "or"
-    } `;
+      } `;
   });
   console.log("Where thing?", q);
   return q.substr(0, q.length - 4);
@@ -355,12 +355,12 @@ function getAiQueries(query: IQueryObject) {
     | ${severityLevel}
     
     `;
-      console.log("dbeug", query.timeRange.from.diff(to, "days"));
+  console.log("dbeug", query.timeRange.from.diff(to, "days"));
   let bucketSize =
-      to.diff(from, "days") > 10 ? "6h"
+    to.diff(from, "days") > 10 ? "6h"
       : to.diff(from, "hours") > 24 ? "1h"
-      : to.diff(from, "hours") > 1 ? "5m"
-      : "1m";
+        : to.diff(from, "hours") > 1 ? "5m"
+          : "1m";
 
   console.log("Bucket size", bucketSize);
 
@@ -379,8 +379,8 @@ function getAiQueries(query: IQueryObject) {
   | order by timestamp ${query.orderBy}, itemId desc
   | take ${take}
   `;
-      console.warn(logQuery);
-  return { logQuery, graphQuery};
+  console.warn(logQuery);
+  return { logQuery, graphQuery };
 }
 
 // interface InsightsResponse {
@@ -497,21 +497,21 @@ class App extends React.Component<{}, IState> {
     window.document.title =
       this.state.settings.currentApp.name + " - Lumberjack";
 
-    worker1.on("worker:error:ai", ({payload}:any) => {
+    worker1.on("worker:error:ai", ({ payload }: any) => {
       this.showDetailedError(payload);
     });
-    worker1.on("logdata", ({payload}:any) => {
+    worker1.on("logdata", ({ payload }: any) => {
       console.log("on logdata", payload);
 
       switch (payload.topic) {
         case "new":
           const newRows = transit.fromJSON(payload.data);
-          logContainer.set(newRows);    
+          logContainer.set(newRows);
           break;
         case "con":
           const addRows = transit.fromJSON(payload.data);
           logContainer.add(addRows);
-          break;      
+          break;
         default:
           break;
       }
@@ -654,30 +654,30 @@ class App extends React.Component<{}, IState> {
                   title="Details"
                   visible={this.state.showDetails !== null}
                   width="90%"
-                  onCancel={() => this.setState({showDetails: null})}
-                  onOk={() => this.setState({showDetails: null})}
+                  onCancel={() => this.setState({ showDetails: null })}
+                  onOk={() => this.setState({ showDetails: null })}
                 >
-                  {this.state.showDetails === null ? null : 
-                <div>
-                          <pre>
-                            {JSON.stringify(
-                              this.state.showDetails,
-                              (k, v) => {
-                                if (v === null || v === "") {
-                                  return undefined;
-                                  // } else if (typeof v === "string" && (v.indexOf("[") === 1 || v.indexOf("{") === 1)) {
-                                  //     console.warn("ye", v);
-                                  //     return JSON.stringify(v, null, 2);
-                                }
+                  {this.state.showDetails === null ? null :
+                    <div>
+                      <pre>
+                        {JSON.stringify(
+                          this.state.showDetails,
+                          (k, v) => {
+                            if (v === null || v === "") {
+                              return undefined;
+                              // } else if (typeof v === "string" && (v.indexOf("[") === 1 || v.indexOf("{") === 1)) {
+                              //     console.warn("ye", v);
+                              //     return JSON.stringify(v, null, 2);
+                            }
 
-                                //console.log(v, typeof v);
+                            //console.log(v, typeof v);
 
-                                return v;
-                              },
-                              2
-                            )}
-                          </pre>
-                        </div>
+                            return v;
+                          },
+                          2
+                        )}
+                      </pre>
+                    </div>
                   }
                 </Modal>
                 <Modal
@@ -899,10 +899,10 @@ class App extends React.Component<{}, IState> {
     let message = ""
     let innerTitle = ""
     let innerMessage = ""
-    if(error.code === "PartialError") {
-      let ed0 =  error.details[0];
+    if (error.code === "PartialError") {
+      let ed0 = error.details[0];
       message = ed0.message;
-      innerTitle = ed0.innererror.message; 
+      innerTitle = ed0.innererror.message;
     } else {
       // message = error.
       innerTitle = error.innererror.message
@@ -910,29 +910,29 @@ class App extends React.Component<{}, IState> {
     }
 
     const key = `open${Date.now()}`;
-        const btn = (
-          <Button
-            type="primary"
-            size="small"
-            onClick={() => notification.close(key)}
-          >
-            Close
+    const btn = (
+      <Button
+        type="primary"
+        size="small"
+        onClick={() => notification.close(key)}
+      >
+        Close
           </Button>
-        );
-        notification.error({
-          key: key,
-          btn: btn,
-          duration: 20,
-          message: "Error: " + title,
-          description: (
-            <div>
-              <p>{message}</p>
-              <strong>{innerTitle}</strong>
-              <p>{innerMessage}</p>
-              <p>See console for more details</p>
-            </div>
-          )
-        });
+    );
+    notification.error({
+      key: key,
+      btn: btn,
+      duration: 20,
+      message: "Error: " + title,
+      description: (
+        <div>
+          <p>{message}</p>
+          <strong>{innerTitle}</strong>
+          <p>{innerMessage}</p>
+          <p>See console for more details</p>
+        </div>
+      )
+    });
   }
 
   private handleShowDetails = (r: any) => {
@@ -940,17 +940,17 @@ class App extends React.Component<{}, IState> {
     // Modal.info({
     //   title: "Details",
     //   content: (
-        
+
     //   ),
     //   width: "80%"
     // });
 
     // var url = location.href;               //Save down the URL without hash.
-    location.href = "#"+r.get("itemId");                 //Go to the target element.
+    location.href = "#" + r.get("itemId");                 //Go to the target element.
     // history.replaceState(null,null as any,url);   //Don't like hashes. Changing it back.
     console.log(r, r.toJS());
-    this.setState(() =>{
-      return {showDetails: r.toJS()}
+    this.setState(() => {
+      return { showDetails: r.toJS() }
     });
   };
 
@@ -988,15 +988,17 @@ class App extends React.Component<{}, IState> {
         url: API_BASE + appId + "/query",
         apiKey: apiKey
       };
-      
+
       var graphRes = worker1.emit("fetchGraphData", {
         ...baseSettings,
-        query: queries.graphQuery});
+        query: queries.graphQuery
+      });
 
       var logRes = worker1.emit("start-fetchLogData", {
-          ...baseSettings,
-          query: queries.logQuery});    
-      
+        ...baseSettings,
+        query: queries.logQuery
+      });
+
       // console.log("GRAPH RES", await graphRes);
       this.setState({
         graphData: await graphRes
@@ -1053,26 +1055,26 @@ class ConsoleView extends React.Component<IConsoleProps, any> {
     return this.props.rows.isEmpty() ? (
       <div className="consoleView">No entries...</div>
     ) : (
-      <DynamicList
-        rows={this.props.rows}
-        currentLength={this.props.rows.count()}
-        threshold={"50%"}
-        pageSize={ConsoleView.pageSize}
-        awaitMore={true}
-        itemsRenderer={this.itemsRenderer}
-        onIntersection={this.intersect}
-      >
-        {this.itemRenderer}
-      </DynamicList>
-    );
+        <DynamicList
+          rows={this.props.rows}
+          currentLength={this.props.rows.count()}
+          threshold={"50%"}
+          pageSize={ConsoleView.pageSize}
+          awaitMore={true}
+          itemsRenderer={this.itemsRenderer}
+          onIntersection={this.intersect}
+        >
+          {this.itemRenderer}
+        </DynamicList>
+      );
   }
 
   private intersect = (size: number, pageSize: number) => {
     console.log("Intersect event:", size, pageSize);
-    worker1.emit("loadmore", {      
-        skip: size,
-        take: pageSize
-      }
+    worker1.emit("loadmore", {
+      skip: size,
+      take: pageSize
+    }
     );
     this.setState(() => {
       return { rowsToRender: size + pageSize };
