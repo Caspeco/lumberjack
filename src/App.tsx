@@ -23,7 +23,7 @@ import "./App.css";
 // import Observer from '@researchgate/react-intersection-observer';
 import DynamicList from "@researchgate/react-intersection-list";
 import { List, fromJS, Map } from "immutable";
-import WorkerOld from "worker-loader!./workerOld.js";
+// import WorkerOld from "worker-loader!./workerOld.js";
 import Worker from "worker-loader!./worker.js";
 import transit from "transit-immutable-js";
 import { Provider, Subscribe, Container } from "unstated";
@@ -32,7 +32,7 @@ import BadRequestError from "./badrequesterror";
 import SearchString from "search-string";
 import EventWorker from "event-worker";
 
-const worker = new WorkerOld();
+// const worker = new WorkerOld();
 
 const asyncWorker = new Worker();
 
@@ -102,7 +102,17 @@ class TimeChart extends React.Component<any, any> {
     if (data.points.length === 0) return null;
     console.log(data);
 
+    const graphErrors = {
+      name: "errors",
+      columns: ["index", "value"],
+      //tz: "Etc/UTC",
+      points: this.props.data.tables[0].rows.map((v: any) => [
+        Index.getIndexString("1m", v[0]),
+        v[1] / 10
+      ])
+    };
     const timeseries = new TimeSeries(data);
+    const timeseries2 = new TimeSeries(graphErrors);
     //var timerange = timeseries.timerange()
     return (
       <div className="graph">
@@ -113,16 +123,19 @@ class TimeChart extends React.Component<any, any> {
               enableDragZoom
               onTimeRangeChanged={this.handleTimeRangeChange}
             >
-              <ChartRow height="100">
+              <ChartRow height="50">
                 <YAxis
                   id="axis1"
                   visible={true}
                   label=""
+                  // min={0}
                   min={0}
                   max={timeseries.max() * 1.1}
                   width="60"
                   type="linear"
+                  tickCount={3}
                 />
+                
                 <Charts>
                   <BarChart
                     axis="axis1"
@@ -148,8 +161,48 @@ class TimeChart extends React.Component<any, any> {
                       }
                     }}
                   />
+                  
                 </Charts>
               </ChartRow>
+              <ChartRow height="50">
+              <YAxis
+                  id="axis2"
+                  visible={true}
+                  label=""
+                  min={0}
+                  // max={0}
+                  max={timeseries2.max() * 1.1}
+                  width="60"
+                  type="linear"
+                  tickCount={3}
+                />
+                <Charts>                
+                  <BarChart
+                    axis="axis2"
+                    series={timeseries2}
+                    style={{
+                      value: {
+                        normal: {
+                          fill: "#ff0000",
+                          opacity: 0.8
+                        },
+                        highlighted: {
+                          fill: "#a7c4dd",
+                          opacity: 1.0
+                        },
+                        selected: {
+                          fill: "orange",
+                          opacity: 1.0
+                        },
+                        muted: {
+                          fill: "grey",
+                          opacity: 0.5
+                        }
+                      }
+                    }}
+                  />
+                  </Charts>
+                  </ChartRow>
             </ChartContainer>
           </Resizable>
         </div>
@@ -278,10 +331,6 @@ function getAiQueries(query: IQueryObject) {
   console.log("grep", query.grep);
 
   var pq = SearchString.parse(query.grep);
-  console.log(pq);
-  console.log("txt", pq.getTextSegments());
-  console.log("ca", pq.getConditionArray());
-  console.log("pq", pq.getParsedQuery());
   const txtSegments: any[] = pq.getTextSegments();
   const conditions: any[] = pq.getConditionArray();
   const fieldsToGrep = [
@@ -324,7 +373,6 @@ function getAiQueries(query: IQueryObject) {
   const take = query.take;
   const logQuery = `${q2}
   | order by timestamp ${query.orderBy}, itemId desc
-  | skip 1
   | take ${take}
   `;
 
@@ -437,7 +485,7 @@ class App extends React.Component<{}, IState> {
       },
       grep: "",
       severityLevel: ["1", "2", "3"],
-      take: 1000,
+      take: 5000,
       ...existingQuery
     };
     const qsObject: any = location.search
@@ -506,17 +554,17 @@ class App extends React.Component<{}, IState> {
     // };
 
     worker1.on("logdata", ({payload}:any) => {
+      console.log("on logdata", payload);
+
       switch (payload.topic) {
         case "new":
-        case "con":
-        const newRows = transit.fromJSON(payload.data);
-        case "new":         
+          const newRows = transit.fromJSON(payload.data);
           logContainer.set(newRows);    
           break;
         case "con":
-          logContainer.set(newRows);
-          break;
-      
+          const addRows = transit.fromJSON(payload.data);
+          logContainer.add(addRows);
+          break;      
         default:
           break;
       }
@@ -961,12 +1009,12 @@ class App extends React.Component<{}, IState> {
       message.success("Success!", 1.5);
     }
     catch (error) {
-      console.log(error, error instanceof BadRequestError);
-      console.error("Failed", error);
+      console.log(error.badRequest, error.response, error, error instanceof BadRequestError);
+      console.error("Failed", error.badRequest, error);
 
       // do not warn on manual abort
-      if (error instanceof BadRequestError) {
-        var data = await error.response.json();
+      if (error.badRequest) {
+        var data = await error.response;
         console.log("bad data", data);
         const key = `open${Date.now()}`;
         const btn = (
@@ -1092,7 +1140,7 @@ class ConsoleView extends React.Component<IConsoleProps, any> {
       <DynamicList
         rows={this.props.rows}
         currentLength={this.props.rows.count()}
-        threshold={"25%"}
+        threshold={"30%"}
         pageSize={ConsoleView.pageSize}
         awaitMore={true}
         itemsRenderer={this.itemsRenderer}
@@ -1105,13 +1153,11 @@ class ConsoleView extends React.Component<IConsoleProps, any> {
 
   private intersect = (size: number, pageSize: number) => {
     console.log("Intersect event:", size, pageSize);
-    worker.postMessage({
-      topic: "loadmore",
-      payload: {
+    worker1.emit("loadmore", {      
         skip: size,
         take: pageSize
       }
-    });
+    );
     this.setState(() => {
       return { rowsToRender: size + pageSize };
     });

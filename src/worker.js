@@ -74,8 +74,10 @@ worker1.on("fetchGraphData", async ({ payload }) => {
     if (response.ok) {
         console.log("Response Age: ", response.headers["age"]);
         return response.json();
-    } else if (response.status === 400) {        
-        throw new BadRequestError(response);
+    } else if (response.status === 400) { 
+        let badres = await response.json();
+        console.log("XXX", badres);       
+        throw new BadRequestError(badres);
     }
     throw new Error(response.status.toString());
 });
@@ -103,13 +105,20 @@ worker1.on("start-fetchLogData", async ({ payload }) => {
     });
 
     if (response.ok) {
-        console.log("Response Age: ", response.headers["age"]);
+        // console.log("Response Age: ", response.headers["age"]);
         parse(await response.json());
         return true;
     } else if (response.status === 400) {
-        throw new BadRequestError(response);
+        let badres = await response.json();
+        // console.log("XXX", badres);       
+        throw new BadRequestError(badres);
     }
     throw new Error(response.status.toString());
+});
+
+worker1.on("loadmore", ({payload}) => {
+    console.log("LOADMORE EVENT", payload);
+    sendBatch(payload.skip, payload.take, false);
 });
 
 let hasSent = false;
@@ -130,7 +139,7 @@ async function sendBatch(skip, take, isNew) {
     // should flag if we send rows.count() == while waiting for new fetch
 
     const json = transit.toJSON(rows);
-    await worker1.emit('logdata', {data:json, topic: isNew ? "new" : "con"});
+    worker1.emit('logdata', {data:json, topic: isNew ? "new" : "con"});
     // postMessage({ topic: isNew ? "new" : "con", payload: json });
     const table = unparsedTable;
     console.log("should fetch? ", table.get("rows").count(), skip + take + DEFAULT_PRELOAD);
@@ -144,8 +153,8 @@ async function sendBatch(skip, take, isNew) {
         // });
     }
     console.log("worker: Prepare next batch.", "currently parsed:", parsedRows.count());
-    skip_current += take;
-    parseParts(skip_current, take, false);
+    // skip_current += take;
+    parseParts(skip + take, take, false);
 }
 
 function parsePaged(ev) {
