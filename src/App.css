@@ -9,7 +9,7 @@
   grid-template-columns: auto;
   grid-template-rows: 200px auto; */
   position: relative;
-  padding-top:140px;
+  padding-top:255px;
 }
 
 .App-logo {
@@ -27,15 +27,22 @@
   grid-template-rows: 50px 50px;
   grid-template-areas: 
     "left topleft"
-    "left bottomleft";
+    "left bottomleft"
+    "bottom bottom";
   justify-items:start;
   align-items: center;
   position: fixed;
   top:0;
   left:0;
   right:0;
-  height: 140px;
+  height: 255px;
   z-index:2;
+}
+
+.graph {
+  grid-area: bottom;
+  height: 100%;
+  width: 100%;
 }
 
 .App-title {
@@ -191,6 +198,14 @@
   white-space: pre-wrap;
   text-align: left;
   word-break: break-all;
+}
+
+a.anchor {
+  display: block;
+  position: relative;
+  top: calc(-255px - 3px); /* -3 is just for visual padding */
+  align-self:start;
+  visibility: hidden;
 }
 
 @keyframes App-logo-spin {
