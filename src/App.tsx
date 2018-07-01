@@ -76,7 +76,8 @@ import {
   ChartRow,
   YAxis,
   BarChart,
-  Resizable
+  Resizable,
+  AreaChart
 } from "react-timeseries-charts";
 import { TimeSeries, Index } from "pondjs";
 
@@ -90,61 +91,136 @@ class TimeChart extends React.Component<any, any> {
   };
   render() {
     if (!this.props.data) return null;
-    const data = {
-      name: "entries",
-      columns: ["index", "value"],
-      //tz: "Etc/UTC",
-      points: this.props.data.tables[0].rows.map((v: any) => [
-        Index.getIndexString("1m", v[0]),
-        v[1]
-      ])
-    };
-    if (data.points.length === 0) return null;
-    console.log(data);
+    // const data = {
+    //   name: "entries",
+    //   columns: ["index", "value"],
+    //   //tz: "Etc/UTC",
+    //   points: this.props.data.tables[0].rows.map((v: any) => [
+    //     Index.getIndexString("1m", v[0]),
+    //     v[1]
+    //   ])
+    // };
+    
+    // console.log(data);
 
-    const graphErrors = {
-      name: "errors",
-      columns: ["index", "value"],
-      //tz: "Etc/UTC",
-      points: this.props.data.tables[0].rows.map((v: any) => [
-        Index.getIndexString("1m", v[0]),
-        v[1] / 10
-      ])
-    };
-    const timeseries = new TimeSeries(data);
-    const timeseries2 = new TimeSeries(graphErrors);
+    // const graphErrors = {
+    //   name: "errors",
+    //   columns: ["index", "value"],
+    //   //tz: "Etc/UTC",
+    //   points: this.props.data.tables[0].rows.map((v: any) => [
+    //     Index.getIndexString("1m", v[0]),
+    //     (v[1] / 10) * Math.random()
+    //   ])
+    // };
+    // const timeseries = new TimeSeries(data);
+    // const timeseries2 = new TimeSeries(graphErrors);
+    const graphData = {
+      name: "graphdata",
+      columns: ["index", "trace", "warning", "error"],
+      points: this.props.data.tables[0].rows.map((v: any) => {
+        // console.log("GD", v);
+        return [
+          Index.getIndexString("1m", v[0]),
+          v[1],
+          v[2],
+          v[3]
+          
+        ]
+      })
+    }
+
+    if (graphData.points.length === 0) return null;
+
+    // console.info("gd2", graphData);
+    
+    const timeseries3 = new TimeSeries(graphData);
+    // console.log("MAX?", timeseries3, timeseries3.max("error"));
+    // console.log(timeseries3);
     //var timerange = timeseries.timerange()
+    const maxErrorWarnings = Math.max(
+      timeseries3.max("warning"),
+      timeseries3.max("error"));
+
+    const maxTraces = timeseries3.max("trace");
+    console.log("max traces", maxTraces);
+    const areaStyle = {
+      trace: {
+          line: {
+              normal: {stroke: "#666", fill: "none", strokeWidth: 1},
+              highlighted: {stroke: "#5a98cb", fill: "none", strokeWidth: 1},
+              selected: {stroke: "steelblue", fill: "none", strokeWidth: 1},
+              muted: {stroke: "steelblue", fill: "none", opacity: 0.4, strokeWidth: 1}
+          },
+          area: {
+              normal: {fill: "#eee", stroke: "none", opacity: 0.75},
+              highlighted: {fill: "#5a98cb", stroke: "none", opacity: 0.75},
+              selected: {fill: "steelblue", stroke: "none", opacity: 0.75},
+              muted: {fill: "steelblue", stroke: "none", opacity: 0.25}
+          }
+      }
+      // ,
+      // out: {
+      //     ...
+      // }
+  };
+  
     return (
       <div className="graph">
         <div style={{}}>
           <Resizable>
             <ChartContainer
-              timeRange={timeseries.timerange()}
+              timeRange={timeseries3.timerange()}
               enableDragZoom
               onTimeRangeChanged={this.handleTimeRangeChange}
             >
-              <ChartRow height="50">
+              <ChartRow height="100">
                 <YAxis
                   id="axis1"
                   visible={true}
-                  label=""
+                  label="Traces"
                   // min={0}
                   min={0}
-                  max={timeseries.max() * 1.1}
+                  max={maxTraces * 1.1}
                   width="60"
                   type="linear"
-                  tickCount={3}
-                />
-                
+                  format=".0d"
+                  tickCount={6}
+                />               
                 <Charts>
-                  <BarChart
+                  <AreaChart
                     axis="axis1"
-                    series={timeseries}
+                    series={timeseries3}
+                    columns={{up: ["trace"]}}
+                    style={areaStyle}
+                  />
+                  <BarChart
+                    axis="axis2"
+                    series={timeseries3}
+                    columns={["warning","error"]}
+                    size={2}
                     style={{
-                      value: {
+                      warning: {
                         normal: {
-                          fill: "#2a81cb",
-                          opacity: 0.8
+                          fill: "#FFA500",
+                          opacity: 0.5
+                        },
+                        highlighted: {
+                          fill: "#a7c4dd",
+                          opacity: 1.0
+                        },
+                        selected: {
+                          fill: "orange",
+                          opacity: 1.0
+                        },
+                        muted: {
+                          fill: "grey",
+                          opacity: 0.5
+                        }
+                      },
+                      error: {
+                        normal: {
+                          fill: "#ff0000",
+                          opacity: 0.5
                         },
                         highlighted: {
                           fill: "#a7c4dd",
@@ -163,46 +239,20 @@ class TimeChart extends React.Component<any, any> {
                   />
                   
                 </Charts>
-              </ChartRow>
-              <ChartRow height="50">
-              <YAxis
+                <YAxis
                   id="axis2"
                   visible={true}
-                  label=""
+                  label="Errors"
                   min={0}
                   // max={0}
-                  max={timeseries2.max() * 1.1}
+                  // max={100}
+                  max={maxErrorWarnings * 1.1}
                   width="60"
                   type="linear"
-                  tickCount={3}
+                  format=".0d"
+                  tickCount={6}
                 />
-                <Charts>                
-                  <BarChart
-                    axis="axis2"
-                    series={timeseries2}
-                    style={{
-                      value: {
-                        normal: {
-                          fill: "#ff0000",
-                          opacity: 0.8
-                        },
-                        highlighted: {
-                          fill: "#a7c4dd",
-                          opacity: 1.0
-                        },
-                        selected: {
-                          fill: "orange",
-                          opacity: 1.0
-                        },
-                        muted: {
-                          fill: "grey",
-                          opacity: 0.5
-                        }
-                      }
-                    }}
-                  />
-                  </Charts>
-                  </ChartRow>
+              </ChartRow>
             </ChartContainer>
           </Resizable>
         </div>
@@ -364,10 +414,23 @@ function getAiQueries(query: IQueryObject) {
     | ${severityLevel}
     
     `;
+      console.log("dbeug", query.timeRange.from.diff(to, "days"));
+  let bucketSize =
+      to.diff(query.timeRange.from, "days") > 10 ? "6h"
+      : to.diff(query.timeRange.from, "hours") > 24 ? "1h"
+      : to.diff(query.timeRange.from, "hours") > 1 ? "5m"
+      : "1m";
+
+  console.log("Bucket size", bucketSize);
 
   const graphQuery = `${q2}
   | order by timestamp ${query.orderBy}, itemId desc
-    | summarize count() by bin(timestamp, 1m)
+    | summarize count() by bin(timestamp, ${bucketSize}), severityLevel
+    | summarize
+    trace = sumif(count_, severityLevel < 2),
+    warning = sumif(count_, severityLevel == 2),
+    error = sumif(count_, severityLevel >= 3)
+    by bin(timestamp, ${bucketSize})
     | order by timestamp asc
   `;
   const take = query.take;
@@ -1000,7 +1063,7 @@ class App extends React.Component<{}, IState> {
           ...baseSettings,
           query: queries.logQuery});    
       
-      console.log("GRAPH RES", await graphRes);
+      // console.log("GRAPH RES", await graphRes);
       this.setState({
         graphData: await graphRes
       });
@@ -1009,8 +1072,9 @@ class App extends React.Component<{}, IState> {
       message.success("Success!", 1.5);
     }
     catch (error) {
+      console.log("XX", error.toString());
       console.log(error.badRequest, error.response, error, error instanceof BadRequestError);
-      console.error("Failed", error.badRequest, error);
+      console.error("Failed", error.badRequest, error, error.status, error.message, error.code);
 
       // do not warn on manual abort
       if (error.badRequest) {
@@ -1038,7 +1102,7 @@ class App extends React.Component<{}, IState> {
             </div>
           )
         });
-      } else if (error.code !== 20) {
+      } else if (error.name !== "AbortError" && error.code !== 20) {
         message.error(
           "Failed to fetch data from AppInsights, check your settings"
         );
