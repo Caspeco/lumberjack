@@ -21,8 +21,6 @@ let parsedRows = List();
 let allUnparsedRows = List();
 let unparsedTable = null;
 
-const DEFAULT_PRELOAD = 200;
-
 let skip_current = 0;
 let take_current = 50;
 
@@ -125,7 +123,7 @@ worker1.on("loadmore", ({payload}) => {
 let hasSent = false;
 async function sendFirstBatch() {
     console.log("worker: Sending first batch...");
-    await sendBatch(0, 50, true);
+    await sendBatch(0, take_current, true);
     hasSent = true;
 }
 
