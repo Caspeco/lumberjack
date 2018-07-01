@@ -3,6 +3,7 @@ import transit from "transit-immutable-js";
 import { List, Map, fromJS, Record } from "immutable";
 import EventWorker from "event-worker";
 import BadRequestError from "./badrequesterror.ts";
+import AppInsightsError from "./appInsightsError.ts";
 
 const RowRecord = Record(
     {
@@ -72,11 +73,11 @@ worker1.on("fetchGraphData", async ({ payload }) => {
         method: "POST"
     });
     if (response.ok) {
-        console.log("Response Age: ", response.headers["age"]);
+        console.info("Response Age: ", response.headers["age"]);
         return response.json();
     } else if (response.status === 400) { 
         let badres = await response.json();
-        console.log("XXX", badres);       
+        console.error("Resonse status 400", badres);       
         throw new BadRequestError(badres);
     }
     throw new Error(response.status.toString());
@@ -181,7 +182,14 @@ function resetState() {
 
 async function parse(ev) {
     resetState();
-    console.log("PARSING", ev);
+    console.log("worker: parsing", ev);
+
+    if(ev.error) {
+        worker1.emit("worker:error:ai", ev.error);
+        return;
+        // throw new AppInsightsError("Error result from AppInsights", ev.error);
+    }
+
     // js-lint
     const table = fromJS(ev.tables[0]);
     unparsedTable = table;

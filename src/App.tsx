@@ -499,7 +499,9 @@ class App extends React.Component<{}, IState> {
     window.document.title =
       this.state.settings.currentApp.name + " - Lumberjack";
 
-    
+    worker1.on("worker:error:ai", ({payload}:any) => {
+      this.showDetailedError(payload);
+    });
     worker1.on("logdata", ({payload}:any) => {
       console.log("on logdata", payload);
 
@@ -862,6 +864,49 @@ class App extends React.Component<{}, IState> {
     await this.getData();
   };
 
+  private showDetailedError(error: any) {
+    console.error("Detailed error", error);
+
+    let title = error.message;
+    let message = ""
+    let innerTitle = ""
+    let innerMessage = ""
+    if(error.code === "PartialError") {
+      let ed0 =  error.details[0];
+      message = ed0.message;
+      innerTitle = ed0.innererror.message; 
+    } else {
+      // message = error.
+      innerTitle = error.innererror.message
+      innerMessage = error.innererror.innererror.message
+    }
+
+    const key = `open${Date.now()}`;
+        const btn = (
+          <Button
+            type="primary"
+            size="small"
+            onClick={() => notification.close(key)}
+          >
+            Close
+          </Button>
+        );
+        notification.error({
+          key: key,
+          btn: btn,
+          duration: 20,
+          message: "Error: " + title,
+          description: (
+            <div>
+              <p>{message}</p>
+              <strong>{innerTitle}</strong>
+              <p>{innerMessage}</p>
+              <p>See console for more details</p>
+            </div>
+          )
+        });
+  }
+
   private handleShowDetails = (r: any) => {
     const obj = r.toJS();
     Modal.info({
@@ -956,28 +1001,7 @@ class App extends React.Component<{}, IState> {
       if (error.badRequest) {
         var data = await error.response;
         console.log("bad data", data);
-        const key = `open${Date.now()}`;
-        const btn = (
-          <Button
-            type="primary"
-            size="small"
-            onClick={() => notification.close(key)}
-          >
-            Close
-          </Button>
-        );
-        notification.error({
-          key: key,
-          btn: btn,
-          duration: 20,
-          message: "Error: " + data.error.message,
-          description: (
-            <div>
-              <strong>{data.error.innererror.message}</strong>
-              <p>{data.error.innererror.innererror.message}</p>
-            </div>
-          )
-        });
+        this.showDetailedError(data.error);
       } else if (error.name !== "AbortError" && error.code !== 20) {
         message.error(
           "Failed to fetch data from AppInsights, check your settings"
