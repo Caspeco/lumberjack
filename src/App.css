@@ -256,3 +256,29 @@ a.anchor {
 .json-markup-number {
   color: blue;
 }
+
+.callstack {
+  list-style: none;
+}
+
+.callstack li {
+  list-style: none;
+  font-family: monospace;
+
+}
+
+.callstack li:first-of-type {
+  font-weight: bold;
+  color: #ca1010;
+}
+
+.callstack li:nth-child(odd) {
+  border: 1px solid #eee;
+  border-left: 0;
+  border-right: 0;
+}
+
+.callstack .isSystemMethod {
+  font-size: 0.8em;
+  color: #868686;
+}
