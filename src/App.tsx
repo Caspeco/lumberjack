@@ -15,6 +15,7 @@ import {
 } from "antd";
 
 import momentjson from "moment-json-parser";
+// import jsonMarkup from "json-markup";
 const RangePicker = DatePicker.RangePicker;
 const Option = Select.Option;
 import * as moment from "moment";
@@ -82,6 +83,7 @@ import {
   AreaChart
 } from "react-timeseries-charts";
 import { TimeSeries, Index } from "pondjs";
+import {DetailsView} from "./DetailsView";
 
 class TimeChart extends React.Component<any, any> {
   private handleTimeRangeChange = (d: any) => {
@@ -696,26 +698,11 @@ class App extends React.Component<{}, IState> {
                   onOk={() => this.setState({ showDetails: null })}
                 >
                   {this.state.showDetails === null ? null :
-                    <div>
-                      <pre>
-                        {JSON.stringify(
-                          this.state.showDetails,
-                          (k, v) => {
-                            if (v === null || v === "") {
-                              return undefined;
-                              // } else if (typeof v === "string" && (v.indexOf("[") === 1 || v.indexOf("{") === 1)) {
-                              //     console.warn("ye", v);
-                              //     return JSON.stringify(v, null, 2);
-                            }
-
-                            //console.log(v, typeof v);
-
-                            return v;
-                          },
-                          2
-                        )}
-                      </pre>
-                    </div>
+                    <DetailsView details={this.state.showDetails}/>
+                    // <div dangerouslySetInnerHTML=
+                    //   {{__html: jsonMarkup(this.state.showDetails)}}>
+                      
+                    // </div>
                   }
                 </Modal>
                 <Modal

@@ -1,15 +1,17 @@
-@import '~antd/dist/antd.css';
-@import url('https://fonts.googleapis.com/css?family=Inconsolata');
+@import "~antd/dist/antd.css";
+@import url("https://fonts.googleapis.com/css?family=Inconsolata");
 
-#root,#root > div, .App {
-  height:100%;
+#root,
+#root > div,
+.App {
+  height: 100%;
 }
 .App {
   /* display: grid;
   grid-template-columns: auto;
   grid-template-rows: 200px auto; */
   position: relative;
-  padding-top:260px;
+  padding-top: 260px;
 }
 
 .App-logo {
@@ -24,23 +26,23 @@
   display: grid;
   grid-template-columns: 100px;
   grid-template-rows: 50px 50px;
-  grid-template-areas: 
+  grid-template-areas:
     "left topleft"
     "left bottomleft"
     "bottom bottom";
-  justify-items:start;
+  justify-items: start;
   align-items: center;
   position: fixed;
-  top:0;
-  left:0;
-  right:0;
+  top: 0;
+  left: 0;
+  right: 0;
   height: 260px;
-  z-index:2;
+  z-index: 2;
   box-shadow: 0 11px 15px #000000;
 }
 
 .topline {
-  display:flex;
+  display: flex;
   align-items: center;
 }
 
@@ -52,7 +54,7 @@
   grid-area: bottom;
   height: 100%;
   width: 100%;
-  padding-top:10px;
+  padding-top: 10px;
 }
 
 .App-title {
@@ -76,7 +78,7 @@
 }
 
 .serachControls {
-  grid-area: bottomleft
+  grid-area: bottomleft;
 }
 
 .timePicker {
@@ -85,25 +87,25 @@
 
 .consoleView {
   background: black;
-  color:white;
+  color: white;
   max-width: 100vw;
   padding-top: 20px;
   flex: 1 1 auto;
-  min-height:100%;
+  min-height: 100%;
 }
 
 .consoleRow {
-    display: flex;
-    font-size: 12px;
-    font-family: 'Inconsolata', monospace;
-    border-bottom: 1px solid transparent;
-    padding:3px;
-    align-items: center;
+  display: flex;
+  font-size: 12px;
+  font-family: "Inconsolata", monospace;
+  border-bottom: 1px solid transparent;
+  padding: 3px;
+  align-items: center;
 }
 
 .consoleRow .roleName {
-  margin-right:10px;
-  width:98px;
+  margin-right: 10px;
+  width: 98px;
   flex: 0 0 auto;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -140,8 +142,8 @@
 }
 
 .consoleRow .details {
-  margin:0 5px;
-  cursor:pointer;
+  margin: 0 5px;
+  cursor: pointer;
 }
 
 .consoleRow .itemType {
@@ -149,12 +151,12 @@
 }
 
 .consoleRow .loglevel {
-  color:black;
+  color: black;
   margin-right: 5px;
   background: #b6b6b6;
   border-radius: 2px;
-  padding:2px 5px;
-  height:100%;
+  padding: 2px 5px;
+  height: 100%;
   cursor: pointer;
 }
 
@@ -164,16 +166,14 @@
 
 .loglevel.error {
   background: #960000;
-  color:white;
+  color: white;
 }
 .loglevel.warning {
-  background:yellow;
+  background: yellow;
 }
 .loglevel.debug {
-  background:#242424;
-  
+  background: #242424;
 }
-
 
 .consoleRow:hover {
   background: #242424;
@@ -214,12 +214,45 @@ a.anchor {
   display: block;
   position: relative;
   top: calc(-260px - 9px); /* -3 is just for visual padding */
-  align-self:start;
+  align-self: start;
   visibility: hidden;
 }
 
 @keyframes App-logo-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
+.json-markup {
+  line-height: 17px;
+  font-size: 13px;
+  font-family: monospace;
+  white-space: pre;
+}
+.json-markup-key {
+  color: #333333;
+  margin-left: 5px;
+  padding: 2px 0;
+  display: inline-block;
+  font-weight: bold;
+  background: #eee;
+  padding: 3px 4px;
+  margin: 2px 7px;
+  border-radius: 2px;
+}
+.json-markup-bool {
+  color: firebrick;
+}
+.json-markup-string {
+  color:black;
+}
+.json-markup-null {
+  color: gray;
+}
+.json-markup-number {
+  color: blue;
+}

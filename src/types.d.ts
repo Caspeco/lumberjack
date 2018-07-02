@@ -9,3 +9,4 @@ declare module 'search-string';
 declare module 'react-timeseries-charts';
 declare module 'pondjs';
 declare module 'event-worker';
+declare module 'json-markup';

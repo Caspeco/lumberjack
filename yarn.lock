@@ -2701,8 +2701,8 @@ event-emitter@~0.3.5:
     es5-ext "~0.10.14"
 
 event-worker@abergs/event-worker:
-  version "1.1.0"
-  resolved "https://codeload.github.com/abergs/event-worker/tar.gz/54b2695e6f2565e218fab6e4f9236d599767fda3"
+  version "1.2.0"
+  resolved "https://codeload.github.com/abergs/event-worker/tar.gz/99da4fad1052656904a251d1fb0c50ee92a11451"
 
 eventemitter3@1.x.x:
   version "1.2.0"
@@ -4485,6 +4485,10 @@ jsesc@~0.5.0:
 json-loader@^0.5.4:
   version "0.5.7"
   resolved "https://registry.yarnpkg.com/json-loader/-/json-loader-0.5.7.tgz#dca14a70235ff82f0ac9a3abeb60d337a365185d"
+
+json-markup@^1.1.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/json-markup/-/json-markup-1.1.0.tgz#4ab1cda4e9b9fa3c7376094ffac3ef1d4e55c607"
 
 json-schema-traverse@^0.3.0:
   version "0.3.1"
