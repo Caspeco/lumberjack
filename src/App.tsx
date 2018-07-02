@@ -1154,14 +1154,17 @@ class ConsoleRow extends React.Component<IConsoleRowProps, any> {
     const row: any = this.props.row;
     const severityLevel = translateSeverityLevel(row.get("severityLevel"));
 
-    const regexp = /\B(#[a-zA-Z0-9-]+\b|#"[a-zA-Z0-9- ]+["|\b])(?!;)/gu;
+    const regexp = /\B(#[a-zA-Z0-9-]+\b|#"[a-zA-Z0-9-_ ]+["|\b])(?!;)/gu;
 
     const msg = reactreplace(
       row.get("message"),
       regexp,
       (match: string, i: number) => {
+        
         const grep = () => {
-          this.props.setGrep({ grep: match });
+          var quotesToUse = match.indexOf("\"") > -1 ?  "'" : '"';
+          const qoutedMatch = quotesToUse + match  + quotesToUse
+          this.props.setGrep({ grep: qoutedMatch });
         };
         return (
           <span className="hashtag" key={i} onClick={grep}>
