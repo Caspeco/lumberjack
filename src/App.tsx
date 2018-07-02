@@ -10,8 +10,10 @@ import {
   Input,
   Tooltip,
   TreeSelect,
-  notification
+  notification,
+  Checkbox,
 } from "antd";
+
 import momentjson from "moment-json-parser";
 const RangePicker = DatePicker.RangePicker;
 const Option = Select.Option;
@@ -401,6 +403,7 @@ interface IState {
   queryHistory: List<Map<any, any>>;
   currentQuery: number;
   graphData: any;
+  autoRefresh: boolean;
   // defaultRange: [moment.Moment,moment.Moment]
 }
 
@@ -490,7 +493,8 @@ class App extends React.Component<{}, IState> {
       showDetails: null,
       queryHistory: List(),
       currentQuery: 0,
-      graphData: null
+      graphData: null,
+      autoRefresh: false
     };
 
     // @ts-ignore
@@ -599,6 +603,11 @@ class App extends React.Component<{}, IState> {
                     />
                     </div>
                     <TreeSelect {...tProps} />
+                    <Checkbox
+                      checked={this.state.autoRefresh}
+                      className="leftMargin"
+                      onChange={this.handleAutoRefreshChange}>Auto refresh</Checkbox>
+                      
                     <Button onClick={this.handleShowSettings} style={{marginLeft:"10px"}}>Settings</Button>
                   </div>
                   
@@ -798,6 +807,24 @@ class App extends React.Component<{}, IState> {
     this.state.settings.currentApp = app;
     this.setState({});
   };
+
+  private refreshTimerId: NodeJS.Timer;
+  private handleAutoRefreshChange = (e: any) => {
+    //  CheckboxChangeEvent
+    this.setState({
+      autoRefresh: e.target.checked
+    });
+
+    clearInterval(this.refreshTimerId);
+    
+    const refreshRate = 60 * 1000; // every 1 min
+    if(e.target.checked) {
+      this.getData();
+      this.refreshTimerId = setInterval(() => {
+        this.getData();
+      }, refreshRate );
+    }
+  }
 
   private goBack = () => {
     const current = this.state.currentQuery;

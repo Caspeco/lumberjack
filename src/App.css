@@ -41,6 +41,11 @@
 
 .topline {
   display:flex;
+  align-items: center;
+}
+
+.leftMargin {
+  margin-left: 10px;
 }
 
 .graph {
