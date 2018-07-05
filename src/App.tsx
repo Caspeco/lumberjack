@@ -1148,6 +1148,10 @@ interface IConsoleRowProps {
   showDetails: (row: ILogRow) => void;
 }
 
+const _colorMap= {
+
+}
+
 class ConsoleRow extends React.Component<IConsoleRowProps, any> {
   /**
    *
@@ -1194,11 +1198,14 @@ class ConsoleRow extends React.Component<IConsoleRowProps, any> {
     const r: any = row;
     //console.log("Render?", r.toJS());
     const opId = r.get("operation_Id");
+    const style = {
+      color: ConsoleRow.getColor(r.get("cloud_RoleInstance"))
+    }
     return (
       <div className="consoleRow" key={r.get("itemId")}>
         <a id={r.get("itemId")} className="anchor"></a>
-        <Tooltip placement="topLeft" title={r.get("cloud_RoleInstance")}>
-          <div className="roleInstance link" onClick={this.setRoleInstance}>
+        <Tooltip placement="topLeft" title={r.get("cloud_RoleInstance")} >
+          <div className="roleInstance link" onClick={this.setRoleInstance} style={style}>
             {r.get("cloud_RoleInstance")}
           </div>
         </Tooltip>
@@ -1224,6 +1231,29 @@ class ConsoleRow extends React.Component<IConsoleRowProps, any> {
       </div>
     );
   }
+
+  private static getColor(instanceName: string) {    
+    if(!instanceName) return "";
+    var existingColor = _colorMap[instanceName];
+    if(existingColor) return existingColor;
+
+    var newColor = ConsoleRow.stringToColour(instanceName.split("").reverse().join(""));
+    _colorMap[instanceName] = newColor;
+    return newColor;
+  }
+
+  private static stringToColour(str:string ) {
+    var hash = 0;
+    for (var i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    var colour = '#';
+    for (var i = 0; i < 3; i++) {
+        var value = (hash >> (i * 8)) & 0xFF;
+        colour += ('00' + value.toString(16)).substr(-2);
+    }
+    return colour;
+}
 
   private setOpid = () => {
     this.props.setGrep({
