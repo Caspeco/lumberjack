@@ -1,9 +1,9 @@
 import * as React from "react";
 import DynamicList from "@researchgate/react-intersection-list";
-import { List, fromJS, Map } from "immutable";
+import { List } from "immutable";
 import { ConsoleRow, ILogRow } from "./ConsoleRow";
-import {logContainer} from "./logContainer"
-import {worker1} from "./workerWrap";
+import { logContainer } from "./logContainer"
+import { worker1 } from "./workerWrap";
 
 interface IConsoleProps {
     rows: List<ILogRow>;

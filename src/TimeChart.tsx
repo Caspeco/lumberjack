@@ -12,7 +12,6 @@ import * as moment from "moment";
 import * as React from "react";
 
 export class TimeChart extends React.Component<any, any> {
- 
 
   public render() {
     if (!this.props.data) { return null; }
@@ -31,7 +30,6 @@ export class TimeChart extends React.Component<any, any> {
     }
 
     if (graphData.points.length === 0) { return null; }
-
 
     const timeseries3 = new TimeSeries(graphData);
     const maxTraces = timeseries3.max("trace");

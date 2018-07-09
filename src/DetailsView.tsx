@@ -9,9 +9,8 @@ export class DetailsView extends React.Component<any, any> {
     const stack: any[] = [];
     if (hasStack) {
       hasStack[0].parsedStack.forEach((v: any) => {
-        
         // identify system methods
-        if(v.method.toLowerCase().startsWith("system.")) {
+        if (v.method.toLowerCase().startsWith("system.")) {
           v.isSytemMethod = true;
         }
 
@@ -22,20 +21,24 @@ export class DetailsView extends React.Component<any, any> {
     return (
       <div>
         <div>
-          { hasStack ? 
-          <ul className="callstack">
-            <h2>Callstack</h2>
-            <li>{this.props.details.problemId}</li>
-            {stack.map(v => {
-              return (
-                <li key={v.level} className={v.isSytemMethod ? "isSystemMethod" : ""}>
-                  <span>
-                    {v.method} line:{v.line}
-                  </span>
-                </li>
-              );
-            })}
-          </ul> : null }
+          {hasStack ? (
+            <ul className="callstack">
+              <h2>Callstack</h2>
+              <li>{this.props.details.problemId}</li>
+              {stack.map(v => {
+                return (
+                  <li
+                    key={v.level}
+                    className={v.isSytemMethod ? "isSystemMethod" : ""}
+                  >
+                    <span>
+                      {v.method} line:{v.line}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
         </div>
         <h2>Properties</h2>
         {getComponentsFromJson(this.props.details)}
