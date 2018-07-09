@@ -7,7 +7,7 @@ export class DetailsView extends React.Component<any, any> {
       : false;
 
     const stack: any[] = [];
-    if (hasStack) {
+    if (hasStack && hasStack[0] && hasStack[0].parsedStack) {
       hasStack[0].parsedStack.forEach((v: any) => {
         // identify system methods
         if (v.method.toLowerCase().startsWith("system.")) {
