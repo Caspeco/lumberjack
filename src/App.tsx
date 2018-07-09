@@ -1,4 +1,4 @@
-/* tslint:disable */
+
 import {
   Select,
   message,
@@ -20,28 +20,26 @@ const RangePicker = DatePicker.RangePicker;
 const Option = Select.Option;
 import * as moment from "moment";
 import * as React from "react";
-import * as reactreplace from "react-string-replace";
 import { HotKeys } from "react-hotkeys";
 import "./App.css";
-// import Observer from '@researchgate/react-intersection-observer';
-import DynamicList from "@researchgate/react-intersection-list";
 import { List, fromJS, Map } from "immutable";
-// import WorkerOld from "worker-loader!./workerOld.js";
-import Worker from "worker-loader!./worker.js";
 import transit from "transit-immutable-js";
-import { Provider, Subscribe, Container } from "unstated";
+import { Provider, Subscribe } from "unstated";
 import BadRequestError from "./badrequesterror";
 
 import SearchString from "search-string";
-import EventWorker from "event-worker";
 
-// const worker = new WorkerOld();
 
-const asyncWorker = new Worker();
+import {ConsoleRow, ILogRow} from "./ConsoleRow";
+import {ConsoleView} from "./ConsoleView";
+import {worker1} from "./workerWrap";
 
-type ILogState = {
-  rows: List<any>;
-};
+import {DetailsView} from "./DetailsView";
+import {TimeChart} from "./TimeChart";
+import {logContainer, LogContainer} from "./logContainer"
+
+const API_BASE = "https://api.applicationinsights.io/v1/apps/";
+
 
 const treeData = [
   {
@@ -73,210 +71,6 @@ const treeData = [
   }
 ];
 
-import {
-  Charts,
-  ChartContainer,
-  ChartRow,
-  YAxis,
-  BarChart,
-  Resizable,
-  AreaChart
-} from "react-timeseries-charts";
-import { TimeSeries, Index } from "pondjs";
-import {DetailsView} from "./DetailsView";
-
-class TimeChart extends React.Component<any, any> {
-  private handleTimeRangeChange = (d: any) => {
-    console.log("handle time chamnge", d, moment(d.begin()), moment(d.end()));
-    if (this.props.onTimeRangeChange)
-      this.props.onTimeRangeChange(moment(d.begin()), moment(d.end()));
-  };
-  render() {
-    if (!this.props.data) return null;
-
-    const graphData = {
-      name: "graphdata",
-      columns: ["index", "trace", "warning", "error"],
-      points: this.props.data.tables[0].rows.map((v: any) => {
-        return [
-          Index.getIndexString("1m", v[0]),
-          v[1],
-          v[2],
-          v[3]
-        ]
-      })
-    }
-
-    if (graphData.points.length === 0) return null;
-
-
-    const timeseries3 = new TimeSeries(graphData);
-    const maxTraces = timeseries3.max("trace");
-    const maxErrorWarnings = Math.max(
-      timeseries3.max("warning"),
-      timeseries3.max("error"));
-
-    const areaStyle = {
-      trace: {
-        line: {
-          normal: { stroke: "#666", fill: "none", strokeWidth: 1 },
-          highlighted: { stroke: "#5a98cb", fill: "none", strokeWidth: 1 },
-          selected: { stroke: "steelblue", fill: "none", strokeWidth: 1 },
-          muted: { stroke: "steelblue", fill: "none", opacity: 0.4, strokeWidth: 1 }
-        },
-        area: {
-          normal: { fill: "#eee", stroke: "none", opacity: 0.75 },
-          highlighted: { fill: "#5a98cb", stroke: "none", opacity: 0.75 },
-          selected: { fill: "steelblue", stroke: "none", opacity: 0.75 },
-          muted: { fill: "steelblue", stroke: "none", opacity: 0.25 }
-        }
-      }
-    };
-
-    const barStyle = {
-      warning: {
-        normal: {
-          fill: "#FFA500",
-          opacity: 0.7
-        },
-        highlighted: {
-          fill: "#a7c4dd",
-          opacity: 1.0
-        },
-        selected: {
-          fill: "orange",
-          opacity: 1.0
-        },
-        muted: {
-          fill: "grey",
-          opacity: 0.5
-        }
-      },
-      error: {
-        normal: {
-          fill: "#ff0000",
-          opacity: 0.7
-        },
-        highlighted: {
-          fill: "#a7c4dd",
-          opacity: 1.0
-        },
-        selected: {
-          fill: "orange",
-          opacity: 1.0
-        },
-        muted: {
-          fill: "grey",
-          opacity: 0.5
-        }
-      }
-    }
-
-    return (
-      <div className="graph">
-        <div style={{}}>
-          <Resizable>
-            <ChartContainer
-              timeRange={timeseries3.timerange()}
-              enableDragZoom
-              onTimeRangeChanged={this.handleTimeRangeChange}
-            >
-              <ChartRow height="100">
-                <YAxis
-                  id="axis1"
-                  visible={true}
-                  label="Traces"
-                  min={0}
-                  max={maxTraces * 1.1}
-                  width="60"
-                  type="linear"
-                  format="~s"
-                />
-                <Charts>
-                  <AreaChart
-                    axis="axis1"
-                    series={timeseries3}
-                    columns={{ up: ["trace"] }}
-                    style={areaStyle}
-                  />
-                  <BarChart
-                    axis="axis2"
-                    series={timeseries3}
-                    columns={["warning", "error"]}
-                    size={3}
-                    style={barStyle}
-                  />
-
-                </Charts>
-                <YAxis
-                  id="axis2"
-                  visible={true}
-                  label="Errors"
-                  min={0}
-                  max={maxErrorWarnings * 1.1}
-                  width="60"
-                  type="linear"
-                  format="~s"
-                />
-              </ChartRow>
-            </ChartContainer>
-          </Resizable>
-        </div>
-      </div>
-    );
-  }
-}
-
-class LogContainer extends Container<ILogState> {
-  state = {
-    rows: List()
-  };
-
-  pendingSet: List<any> = List();
-  pendingChanges: List<any> = List();
-
-  add = (rows: List<any>) => {
-    console.log("adding new", rows.count());
-    this.pendingChanges = this.pendingChanges.concat(rows).toList();
-    console.log("pending changes", this.pendingChanges.count());
-    this.innerAdd();
-  };
-
-  set = (rows: List<any>) => {
-    console.log("set", rows);
-    this.pendingSet = rows;
-    this.pendingChanges = this.pendingChanges.clear();
-    this.innerSet();
-  };
-
-  innerAdd = () => {
-    // @ts-ignore
-    this.setState(s => {
-      const rows = s.rows.concat(this.pendingChanges).toList();
-      this.pendingChanges = this.pendingChanges.clear();
-      return { rows };
-    });
-  };
-
-  innerSet = () => {
-    console.log("inner set");
-    // @ts-ignore
-    this.setState(() => {
-      return { rows: this.pendingSet };
-    });
-  };
-}
-let logContainer = new LogContainer();
-
-/*
-
-DATA 
-
-*/
-
-const worker1 = new EventWorker(asyncWorker);
-
-const API_BASE = "https://api.applicationinsights.io/v1/apps/";
 
 interface IQueryObject {
   timeRange: {
@@ -285,7 +79,6 @@ interface IQueryObject {
   };
   orderBy: "desc" | "asc";
   grep: string;
-  //severityLevel: [1, 2, 3, 4];
   severityLevel: string[];
   maxAge?: number;
   take: number;
@@ -323,7 +116,7 @@ function getAiQueries(query: IQueryObject) {
   const to = (query.timeRange.to || moment()).clone().utc();
   const from = query.timeRange.from.clone().utc();
 
-  var pq = SearchString.parse(query.grep);
+  const pq = SearchString.parse(query.grep);
   // console.log("pq", pq.toString());
   const txtSegments: any[] = pq.getTextSegments();
   const conditions: any[] = pq.getConditionArray();
@@ -359,7 +152,7 @@ function getAiQueries(query: IQueryObject) {
     
     `;
   console.log("dbeug", query.timeRange.from.diff(to, "days"));
-  let bucketSize =
+  const bucketSize =
     to.diff(from, "days") > 10 ? "6h"
       : to.diff(from, "hours") > 24 ? "1h"
         : to.diff(from, "hours") > 1 ? "5m"
@@ -421,11 +214,11 @@ interface ISettings {
   currentApp: InsightsApp;
 }
 
-const map = {
+const keyBindingsMap = {
   refresh: "enter"
 };
 
-class App extends React.Component<{}, IState> {
+export class App extends React.Component<{}, IState> {
   
   /**
    *
@@ -591,7 +384,7 @@ class App extends React.Component<{}, IState> {
       <Provider inject={[logContainer]}>
         <Subscribe to={[LogContainer]}>
           {lc => (
-            <HotKeys keyMap={map} handlers={handlers}>
+            <HotKeys keyMap={keyBindingsMap} handlers={handlers}>
               <div className="App">
                 <header className="App-header">
                 <div className="topline">
@@ -943,7 +736,7 @@ class App extends React.Component<{}, IState> {
     let innerTitle = ""
     let innerMessage = ""
     if (error.code === "PartialError") {
-      let ed0 = error.details[0];
+      const ed0 = error.details[0];
       message = ed0.message;
       innerTitle = ed0.innererror.message;
     } else {
@@ -1037,7 +830,7 @@ class App extends React.Component<{}, IState> {
         query: queries.graphQuery
       });
 
-      var logRes = worker1.emit("start-fetchLogData", {
+      let logRes = worker1.emit("start-fetchLogData", {
         ...baseSettings,
         query: queries.logQuery
       });
@@ -1057,7 +850,7 @@ class App extends React.Component<{}, IState> {
 
       // do not warn on manual abort
       if (error.badRequest) {
-        var data = await error.response;
+        let data = await error.response;
         console.log("bad data", data);
         this.showDetailedError(data.error);
       } else if (error.name !== "AbortError" && error.code !== 20) {
@@ -1071,234 +864,3 @@ class App extends React.Component<{}, IState> {
     }
   }
 }
-
-interface ILogRow {
-  setGrep: (str: string) => void;
-  showDetails: (row: ILogRow) => void;
-}
-
-interface IConsoleProps {
-  rows: List<ILogRow>;
-  setGrep: (str: {}) => void;
-  showDetails: (row: ILogRow) => void;
-}
-
-class ConsoleView extends React.Component<IConsoleProps, any> {
-  /**
-   *
-   */
-  constructor(props: any) {
-    super(props);
-  }
-
-  static pageSize: number = 50;
-
-  public render() {
-    console.log("render rows count", this.props.rows.count());
-    return this.props.rows.isEmpty() ? (
-      <div className="consoleView">No entries...</div>
-    ) : (
-        <DynamicList
-          rows={this.props.rows}
-          currentLength={this.props.rows.count()}
-          threshold={"50%"}
-          pageSize={ConsoleView.pageSize}
-          awaitMore={true}
-          itemsRenderer={this.itemsRenderer}
-          onIntersection={this.intersect}
-        >
-          {this.itemRenderer}
-        </DynamicList>
-      );
-  }
-
-  private intersect = (size: number, pageSize: number) => {
-    console.log("Intersect event:", size, pageSize);
-    worker1.emit("loadmore", {
-      skip: size,
-      take: pageSize
-    }
-    );
-    this.setState(() => {
-      return { rowsToRender: size + pageSize };
-    });
-  };
-
-  private itemsRenderer = (items: any, ref: any) => (
-    <div className="consoleView" ref={ref}>
-      {items}
-    </div>
-  );
-
-  private itemRenderer = (index: number, key: string) => {
-    return (
-      <ConsoleRow
-        row={logContainer.state.rows.get(index)}
-        key={key}
-        setGrep={this.props.setGrep}
-        showDetails={this.props.showDetails}
-      />
-    );
-  };
-}
-
-interface IConsoleRowProps {
-  row: any;
-  setGrep: (values: {}) => void;
-  showDetails: (row: ILogRow) => void;
-}
-
-const _colorMap= {
-
-}
-
-class ConsoleRow extends React.Component<IConsoleRowProps, any> {
-  /**
-   *
-   */
-
-  constructor(props: any) {
-    super(props);
-  }
-
-  shouldComponentUpdate(nextProps: any, nextState: any) {
-    if (!nextProps.row.equals(this.props.row)) {
-      return true;
-    }
-    return false;
-  }
-
-  public render() {
-    const row: any = this.props.row;
-    const severityLevel = translateSeverityLevel(row.get("severityLevel"));
-
-    const regexp = /\B(#[a-zA-Z0-9-]+\b|#"[a-zA-Z0-9-_ ]+["|\b])(?!;)/gu;
-
-    const msg = reactreplace(
-      row.get("message"),
-      regexp,
-      (match: string, i: number) => {
-        
-        const grep = () => {
-          var quotesToUse = match.indexOf("\"") > -1 ?  "'" : '"';
-          const qoutedMatch = quotesToUse + match  + quotesToUse
-          this.props.setGrep({ grep: qoutedMatch });
-        };
-        return (
-          <span className="hashtag" key={i} onClick={grep}>
-            {match}
-          </span>
-        );
-      }
-    );
-
-    // const handlers = {
-    //     'ctrl+enter': this.setGrep
-    // };
-    const r: any = row;
-    //console.log("Render?", r.toJS());
-    const opId = r.get("operation_Id");
-    const style = {
-      color: ConsoleRow.getColor(r.get("cloud_RoleInstance"))
-    }
-    return (
-      <div className="consoleRow" key={r.get("itemId")}>
-        <a id={r.get("itemId")} className="anchor"></a>
-        <Tooltip placement="topLeft" title={r.get("cloud_RoleInstance")} >
-          <div className="roleInstance link" onClick={this.setRoleInstance} style={style}>
-            {r.get("cloud_RoleInstance")}
-          </div>
-        </Tooltip>
-        <Tooltip placement="topLeft" title={r.get("cloud_RoleName")}>
-          <div className="roleName link" onClick={this.setRoleName}>
-            {r.get("cloud_RoleName")}
-          </div>
-        </Tooltip>
-        <div className="timestamp">
-          {moment(r.get("timestamp")).format("YYYY-MM-DD HH:mm:ss:SSS")}
-        </div>
-        <Icon className="details" type="message" onClick={this.showDetails} />
-        <div className={"loglevel " + severityLevel} onClick={this.setSeverity}>
-          {severityLevel}
-        </div>
-        {opId ? (
-          <div className="operation_Id " onClick={this.setOpid}>
-            {opId}
-          </div>
-        ) : null}
-        <div className="message">{msg}</div>
-        <div className="itemType">{r.get("itemType")}</div>
-      </div>
-    );
-  }
-
-  private static getColor(instanceName: string) {    
-    if(!instanceName) return "";
-    var existingColor = _colorMap[instanceName];
-    if(existingColor) return existingColor;
-
-    var newColor = ConsoleRow.stringToColour(instanceName.split("").reverse().join(""));
-    _colorMap[instanceName] = newColor;
-    return newColor;
-  }
-
-  private static stringToColour(str:string ) {
-    var hash = 0;
-    for (var i = 0; i < str.length; i++) {
-        hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    var colour = '#';
-    for (var i = 0; i < 3; i++) {
-        var value = (hash >> (i * 8)) & 0xFF;
-        colour += ('00' + value.toString(16)).substr(-2);
-    }
-    return colour;
-}
-
-  private setOpid = () => {
-    this.props.setGrep({
-      grep: `operation_Id:"${this.props.row.get("operation_Id").toString()}"`
-    });
-  };
-
-  private setRoleInstance = () => {
-    this.props.setGrep({
-      grep: `cloud_RoleInstance:"${this.props.row
-        .get("cloud_RoleInstance")
-        .toString()}"`
-    });
-  };
-
-  private setRoleName = () => {
-    this.props.setGrep({
-      grep: `cloud_RoleName:"${this.props.row
-        .get("cloud_RoleName")
-        .toString()}"`
-    });
-  };
-
-  private setSeverity = () => {
-    this.props.setGrep({
-      severityLevel: [this.props.row.get("severityLevel").toString()]
-    });
-  };
-
-  private showDetails = () => {
-    this.props.showDetails(this.props.row);
-  };
-}
-
-function translateSeverityLevel(level: number) {
-  switch (level) {
-    case 1:
-      return "info";
-    case 2:
-      return "warning";
-    case 3:
-      return "error";
-    default:
-      return "debug";
-  }
-}
-
-export default App;
