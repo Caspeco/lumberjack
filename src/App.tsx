@@ -1,4 +1,3 @@
-
 import {
   Select,
   message,
@@ -11,11 +10,9 @@ import {
   Tooltip,
   TreeSelect,
   notification,
-  Checkbox,
+  Checkbox
 } from "antd";
-
 import momentjson from "moment-json-parser";
-// import jsonMarkup from "json-markup";
 const RangePicker = DatePicker.RangePicker;
 const Option = Select.Option;
 import * as moment from "moment";
@@ -26,20 +23,18 @@ import { List, fromJS, Map } from "immutable";
 import transit from "transit-immutable-js";
 import { Provider, Subscribe } from "unstated";
 import BadRequestError from "./badrequesterror";
-
 import SearchString from "search-string";
-
-
 import { ConsoleRow, ILogRow } from "./ConsoleRow";
 import { ConsoleView } from "./ConsoleView";
 import { worker1 } from "./workerWrap";
-
 import { DetailsView } from "./DetailsView";
 import { TimeChart } from "./TimeChart";
-import { logContainer, LogContainer } from "./logContainer"
+import { logContainer, LogContainer } from "./logContainer";
+import createHistory from "history/createBrowserHistory";
+import { UnregisterCallback } from "history";
 
+const history = createHistory();
 const API_BASE = "https://api.applicationinsights.io/v1/apps/";
-
 
 const treeData = [
   {
@@ -71,7 +66,6 @@ const treeData = [
   }
 ];
 
-
 interface IQueryObject {
   timeRange: {
     from: moment.Moment;
@@ -101,7 +95,7 @@ function where(fields: string[], value: string, negated: boolean) {
   fields.forEach(field => {
     q += `${field} ${negated ? "!" : ""}contains "${value}" ${
       negated ? "and" : "or"
-      } `;
+    } `;
   });
   console.log("Where thing?", q);
   return q.substr(0, q.length - 4);
@@ -153,9 +147,12 @@ function getAiQueries(query: IQueryObject) {
     `;
   console.log("dbeug", query.timeRange.from.diff(to, "days"));
   const bucketSize =
-    to.diff(from, "days") > 10 ? "6h"
-      : to.diff(from, "hours") > 24 ? "1h"
-        : to.diff(from, "hours") > 1 ? "5m"
+    to.diff(from, "days") > 10
+      ? "6h"
+      : to.diff(from, "hours") > 24
+        ? "1h"
+        : to.diff(from, "hours") > 1
+          ? "5m"
           : "1m";
 
   console.log("Bucket size", bucketSize);
@@ -219,8 +216,8 @@ const keyBindingsMap = {
 };
 
 export class App extends React.Component<{}, IState> {
-
   private refreshTimerId: NodeJS.Timer;
+  private historyUnlisten: UnregisterCallback;
 
   constructor(props: {}) {
     super(props);
@@ -241,8 +238,7 @@ export class App extends React.Component<{}, IState> {
       orderBy: "desc",
       source: "traces",
       timeRange: {
-        from: moment()
-          .subtract(1, "h"),
+        from: moment().subtract(1, "h"),
         to: null
       },
       grep: "",
@@ -313,13 +309,37 @@ export class App extends React.Component<{}, IState> {
         default:
           break;
       }
-    })
+    });
   }
 
-
-
   public async componentDidMount() {
+    // Listen for changes to the current location.
+    this.historyUnlisten = history.listen((loc, action) => {
+      // location is an object like window.location
+
+      // update query if we have one in the querystring
+      if (loc.search) {
+        const parsedSearch: any = loc.search
+          .slice(1)
+          .split("&")
+          .map(p => decodeURI(p))
+          .map(p => p.split("="))
+          .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
+
+        if (parsedSearch.query) {
+          this.setState({
+            query: momentjson(parsedSearch.query)
+          });
+        }
+      }
+    });
     this.getData();
+  }
+
+  public componentWillUnmount() {
+    if (this.historyUnlisten) {
+      this.historyUnlisten();
+    }
   }
 
   public render() {
@@ -393,21 +413,43 @@ export class App extends React.Component<{}, IState> {
                     <Checkbox
                       checked={this.state.autoRefresh}
                       className="leftMargin"
-                      onChange={this.handleAutoRefreshChange}>Auto refresh</Checkbox>
+                      onChange={this.handleAutoRefreshChange}
+                    >
+                      Auto refresh
+                    </Checkbox>
 
-                    <Button onClick={this.handleShowSettings} style={{ marginLeft: "10px" }}>Settings</Button>
+                    <Button
+                      onClick={this.handleShowSettings}
+                      style={{ marginLeft: "10px" }}
+                    >
+                      Settings
+                    </Button>
                   </div>
 
                   <div className="searchControls">
                     <Button.Group size="small">
                       {/* tslint:disable:jsx-no-lambda*/}
-                      <Button onClick={() => this.setAgo("30m")}>Last 30m</Button>
-                      <Button onClick={() => this.setAgo("01h")}>Last 60m</Button>
-                      <Button onClick={() => this.setAgo("02h")}>Last 2h</Button>
-                      <Button onClick={() => this.setAgo("12h")}>Last 12h</Button>
-                      <Button onClick={() => this.setAgo("24h")}>Last 24h</Button>
-                      <Button onClick={() => this.setAgo("02d")}>Last 2d</Button>
-                      <Button onClick={() => this.setAgo("07d")}>Last week</Button>
+                      <Button onClick={() => this.setAgo("30m")}>
+                        Last 30m
+                      </Button>
+                      <Button onClick={() => this.setAgo("01h")}>
+                        Last 60m
+                      </Button>
+                      <Button onClick={() => this.setAgo("02h")}>
+                        Last 2h
+                      </Button>
+                      <Button onClick={() => this.setAgo("12h")}>
+                        Last 12h
+                      </Button>
+                      <Button onClick={() => this.setAgo("24h")}>
+                        Last 24h
+                      </Button>
+                      <Button onClick={() => this.setAgo("02d")}>
+                        Last 2d
+                      </Button>
+                      <Button onClick={() => this.setAgo("07d")}>
+                        Last week
+                      </Button>
                       {/* tslint:enable:jsx-no-lambda*/}
                     </Button.Group>
                     <RangePicker
@@ -418,36 +460,16 @@ export class App extends React.Component<{}, IState> {
                         marginLeft: "10px"
                       }}
                       ranges={{
-                        "Last 30m": [
-                          moment()
-                            .subtract(30, "m")
-                        ],
-                        "Last 60m": [
-                          moment()
-                            .subtract(60, "m")
-                        ],
-                        "Last 2h": [
-                          moment()
-                            .subtract(2, "h")
-                        ],
-                        "Last 8h": [
-                          moment()
-                            .subtract(8, "h")
-                        ],
-                        Today: [
-                          moment()
-                            .startOf("day"),
-                          moment()
-                            .endOf("day")
-                        ],
+                        "Last 30m": [moment().subtract(30, "m")],
+                        "Last 60m": [moment().subtract(60, "m")],
+                        "Last 2h": [moment().subtract(2, "h")],
+                        "Last 8h": [moment().subtract(8, "h")],
+                        Today: [moment().startOf("day"), moment().endOf("day")],
                         "This Month": [
-                          moment()
-                            .startOf("month"),
-                          moment()
-                            .endOf("month")
+                          moment().startOf("month"),
+                          moment().endOf("month")
                         ]
                       }}
-
                       value={currentTimeRangeValue}
                       showTime
                       format="YYYY-MM-DD HH:mm:ss"
@@ -484,12 +506,13 @@ export class App extends React.Component<{}, IState> {
                   onCancel={this.hideDetails}
                   onOk={this.hideDetails}
                 >
-                  {this.state.showDetails === null ? null :
+                  {this.state.showDetails === null ? null : (
                     <DetailsView details={this.state.showDetails} />
-                    // <div dangerouslySetInnerHTML=
-                    //   {{__html: jsonMarkup(this.state.showDetails)}}>
+                  )
+                  // <div dangerouslySetInnerHTML=
+                  //   {{__html: jsonMarkup(this.state.showDetails)}}>
 
-                    // </div>
+                  // </div>
                   }
                 </Modal>
                 <Modal
@@ -539,7 +562,8 @@ export class App extends React.Component<{}, IState> {
                   <Button
                     type="primary"
                     // tslint:disable-next-line:jsx-no-lambda
-                    onClick={e => this.newApp("add", e)}>
+                    onClick={e => this.newApp("add", e)}
+                  >
                     Add new App
                   </Button>
                 </Modal>
@@ -553,15 +577,18 @@ export class App extends React.Component<{}, IState> {
 
   private hideDetails = () => {
     this.setState({ showDetails: null });
-  }
+  };
   private setAgo = (time: string) => {
-    const amount = parseInt(time.substr(0, 2), 10)
+    const amount = parseInt(time.substr(0, 2), 10);
     const unit = time[2];
     this.handleTimeRangeChange(
-      this.state.query.timeRange.from = moment().subtract(amount as any, unit),
-      null as any as moment.Moment
+      (this.state.query.timeRange.from = moment().subtract(
+        amount as any,
+        unit
+      )),
+      (null as any) as moment.Moment
     );
-  }
+  };
 
   private newApp = (field: string, e: any) => {
     if (field === "add") {
@@ -601,7 +628,6 @@ export class App extends React.Component<{}, IState> {
     this.setState({});
   };
 
-
   private handleAutoRefreshChange = (e: any) => {
     //  CheckboxChangeEvent
     this.setState({
@@ -617,7 +643,7 @@ export class App extends React.Component<{}, IState> {
         this.getData();
       }, refreshRate);
     }
-  }
+  };
 
   private goBack = () => {
     const current = this.state.currentQuery;
@@ -745,17 +771,17 @@ export class App extends React.Component<{}, IState> {
     console.error("Detailed error", error);
 
     const title = error.message;
-    let messageText = ""
-    let innerTitle = ""
-    let innerMessage = ""
+    let messageText = "";
+    let innerTitle = "";
+    let innerMessage = "";
     if (error.code === "PartialError") {
       const ed0 = error.details[0];
       messageText = ed0.message;
       innerTitle = ed0.innererror.message;
     } else {
       // message = error.
-      innerTitle = error.innererror.message
-      innerMessage = error.innererror.innererror.message
+      innerTitle = error.innererror.message;
+      innerMessage = error.innererror.innererror.message;
     }
 
     const key = `open${Date.now()}`;
@@ -767,7 +793,7 @@ export class App extends React.Component<{}, IState> {
         onClick={() => notification.close(key)}
       >
         Close
-          </Button>
+      </Button>
     );
     notification.error({
       key,
@@ -786,36 +812,31 @@ export class App extends React.Component<{}, IState> {
   }
 
   private handleShowDetails = (r: any) => {
-    // const obj = r.toJS();
-    // Modal.info({
-    //   title: "Details",
-    //   content: (
-
-    //   ),
-    //   width: "80%"
-    // });
-
-    // var url = location.href;               //Save down the URL without hash.
-    location.href = "#" + r.get("itemId");                 // Go to the target element.
+    location.href = "#" + r.get("itemId"); // Go to the target element.
     // history.replaceState(null,null as any,url);   //Don't like hashes. Changing it back.
     console.log(r, r.toJS());
     this.setState(() => {
-      return { showDetails: r.toJS() }
+      return { showDetails: r.toJS() };
     });
   };
 
-  private async getData() {
-    const hide = message.loading("Refreshing data...", 0);
+  private setQueryHistory() {
     // save query to storage
     localStorage.setItem("query", JSON.stringify(this.state.query));
 
     // todo: break out
     const last = this.state.queryHistory.last() || Map();
-    if (!last.equals(fromJS(this.state.query))) {
+    const tx = fromJS(this.state.query);
+    if (!last.equals(tx)) {
+      history.push({
+        pathname: "/",
+        search: "?query=" + JSON.stringify(tx.toJS())
+      });
+
       this.setState(
         ps => {
           return {
-            queryHistory: ps.queryHistory.push(fromJS(ps.query)),
+            queryHistory: ps.queryHistory.push(tx),
             currentQuery: ps.queryHistory.count()
           };
         },
@@ -826,8 +847,13 @@ export class App extends React.Component<{}, IState> {
     }
 
     this.setState({
-      lastQuery: fromJS(this.state.query)
+      lastQuery: tx
     });
+  }
+
+  private async getData() {
+    const hide = message.loading("Refreshing data...", 0);
+    this.setQueryHistory();
 
     const queries = getAiQueries(this.state.query);
     try {
@@ -856,11 +882,22 @@ export class App extends React.Component<{}, IState> {
       console.log("DOOOOONE", await logRes);
 
       message.success("Success!", 1.5);
-    }
-    catch (error) {
+    } catch (error) {
       console.log("XX", error.toString());
-      console.log(error.badRequest, error.response, error, error instanceof BadRequestError);
-      console.error("Failed", error.badRequest, error, error.status, error.message, error.code);
+      console.log(
+        error.badRequest,
+        error.response,
+        error,
+        error instanceof BadRequestError
+      );
+      console.error(
+        "Failed",
+        error.badRequest,
+        error,
+        error.status,
+        error.message,
+        error.code
+      );
 
       // do not warn on manual abort
       if (error.badRequest) {
