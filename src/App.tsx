@@ -216,6 +216,7 @@ const keyBindingsMap = {
 };
 
 export class App extends React.Component<{}, IState> {
+  
   private refreshTimerId: NodeJS.Timer;
   private historyUnlisten: UnregisterCallback;
 
@@ -255,6 +256,7 @@ export class App extends React.Component<{}, IState> {
     let qsSettings = null;
     if (qsObject.settings) {
       qsSettings = JSON.parse(atob(qsObject.settings));
+      this.promptSaveNewSettings(qsSettings);      
     }
     const settings: ISettings = qsSettings ||
       JSON.parse(localStorage.getItem("settings") as string) || {
@@ -578,6 +580,50 @@ export class App extends React.Component<{}, IState> {
     );
   }
 
+  private promptSaveNewSettings(settings: ISettings): any {
+
+    const newJson = JSON.stringify(settings);
+    if(newJson === localStorage.getItem("settings")) { return; }
+
+    const key = "savesettings";
+
+    const btn = (
+      <Button.Group>
+        <Button
+          
+          key="closeSettings1"
+          // tslint:disable-next-line:jsx-no-lambda
+          onClick={() => notification.close(key)}
+        >
+          Close
+        </Button>,
+        <Button
+        key="closeSettings2"
+        type="primary"
+        // tslint:disable-next-line:jsx-no-lambda
+        onClick={() => {
+          localStorage.setItem("settings", newJson);
+          notification.close(key);
+        }}
+      >
+        Save
+      </Button>
+    </Button.Group>
+    );
+    notification.info({
+      key,
+      btn,
+      icon: <Icon type="setting" />,
+      duration: 30,
+      message: "Save settings?",
+      description: (
+        <div>
+          <p>We noticed you launched Lumberjack with new settings, would you like to save them?</p>
+        </div>
+      )
+    });
+  }
+
   private hideDetails = () => {
     this.setState({ showDetails: null });
   };
@@ -815,6 +861,7 @@ export class App extends React.Component<{}, IState> {
       btn,
       icon: <Icon type="smile-o" style={{color: "#40a9ff"}} />,
       duration: 60,
+      placement:"bottomRight",
       message: "Discover hidden features and hotkeys",
       description: (
         <div>
