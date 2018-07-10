@@ -19,6 +19,7 @@ export interface IConsoleRowProps {
 const COLOR_MAP = {};
 
 export class ConsoleRow extends React.Component<IConsoleRowProps, any> {
+  
   private static getColor(instanceName: string) {
     if (!instanceName) {
       return "";
@@ -97,7 +98,7 @@ export class ConsoleRow extends React.Component<IConsoleRowProps, any> {
       color: ConsoleRow.getColor(r.get("cloud_RoleInstance"))
     };
     return (
-      <div className="consoleRow" key={r.get("itemId")}>
+      <div className="consoleRow" key={r.get("itemId")} onClick={this.handleClick}>
         <a id={r.get("itemId")} className="anchor" />
         <Tooltip placement="topLeft" title={r.get("cloud_RoleInstance")}>
           <div
@@ -129,6 +130,12 @@ export class ConsoleRow extends React.Component<IConsoleRowProps, any> {
         <div className="itemType">{r.get("itemType")}</div>
       </div>
     );
+  }
+
+  private handleClick = (e: React.MouseEvent<HTMLDivElement>): any => {
+    if(e.ctrlKey) {
+      this.showDetails();
+    }    
   }
 
   private setOpid = () => {

@@ -24,6 +24,7 @@ It will give you an overview of your logs with a chart that shows you amount of 
  * `shift+left`: Go back in the query history (Also available through browser back button)
  * `shift+right`: Go forward in query history
  * `ctrl+enter`: Grep with currently selected text
+ * `ctrl+click`: Open details view for row by ctrl+clicking on it
 
 ## To get started using it
 

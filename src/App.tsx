@@ -503,7 +503,7 @@ export class App extends React.Component<{}, IState> {
                   showDetails={this.handleShowDetails}
                 />
                 <Modal
-                  title="Details"
+                  title={<span>Details<small className="helptext"> - Ctrl+Click on row to open</small></span>}
                   visible={this.state.showDetails !== null}
                   width="90%"
                   onCancel={this.hideDetails}

@@ -23,7 +23,7 @@ export class DetailsView extends React.Component<any, any> {
         <div>
           {hasStack ? (
             <ul className="callstack">
-              <h2>Callstack</h2>
+              <h3>Callstack</h3>
               <li>{this.props.details.problemId}</li>
               {stack.map(v => {
                 return (
@@ -40,7 +40,7 @@ export class DetailsView extends React.Component<any, any> {
             </ul>
           ) : null}
         </div>
-        <h2>Properties</h2>
+        <h3>Properties</h3>
         {getComponentsFromJson(this.props.details)}
       </div>
     );
