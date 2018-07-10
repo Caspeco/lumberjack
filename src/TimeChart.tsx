@@ -126,6 +126,7 @@ export class TimeChart extends React.Component<any, any> {
                     columns={["warning", "error"]}
                     size={3}
                     style={barStyle}
+                    onSelectionChange={this.selectChange}
                   />
 
                 </Charts>
@@ -145,6 +146,10 @@ export class TimeChart extends React.Component<any, any> {
         </div>
       </div>
     );
+  }
+
+  private selectChange = (d:any, e:any) => {
+    this.handleTimeRangeChange(d.event.timerange());
   }
 
   private handleTimeRangeChange = (d: any) => {
