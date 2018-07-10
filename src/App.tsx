@@ -493,7 +493,7 @@ export class App extends React.Component<{}, IState> {
                   </Tooltip>
                   <TimeChart
                     data={this.state.graphData}
-                    onTimeRangeChange={this.handleTimeRangeChange}
+                    onTimeRangeChange={this.timeRangeChangeImmediate}
                   />
                 </header>
 
@@ -584,7 +584,7 @@ export class App extends React.Component<{}, IState> {
   private setAgo = (time: string) => {
     const amount = parseInt(time.substr(0, 2), 10);
     const unit = time[2];
-    this.handleTimeRangeChange(
+    this.timeRangeChangeImmediate(
       (this.state.query.timeRange.from = moment().subtract(
         amount as any,
         unit
@@ -721,11 +721,18 @@ export class App extends React.Component<{}, IState> {
       };
     });
   };
-  private handleTimeRangeChange = (from: moment.Moment, to: moment.Moment) => {
+
+  /**
+   * Set the timerange and triggers a reload immediately
+   *
+   * @private
+   * @memberof App
+   */
+  private timeRangeChangeImmediate = (from: moment.Moment, to: moment.Moment) => {
     const ms: [moment.Moment] = [from, to] as any;
-    this.rangeChange(ms, []);
+    this.rangeChange(ms, [], true);
   };
-  private rangeChange = (dates: [moment.Moment], dateStrings: string[]) => {
+  private rangeChange = (dates: [moment.Moment], dateStrings?: string[], immediate?: boolean) => {
     this.setState(ps => {
       return {
         query: {
@@ -736,6 +743,10 @@ export class App extends React.Component<{}, IState> {
           }
         }
       };
+    }, () => {
+      if(immediate === true) {
+        this.getData();
+      }
     });
   };
 
