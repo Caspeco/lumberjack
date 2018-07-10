@@ -116,7 +116,7 @@ export class ConsoleRow extends React.Component<IConsoleRowProps, any> {
         <div className="timestamp">
           {moment(r.get("timestamp")).format("YYYY-MM-DD HH:mm:ss:SSS")}
         </div>
-        <Icon className="details" type="message" onClick={this.showDetails} />
+        <Icon className="details" type="select" onClick={this.showDetails} />
         <div className={"loglevel " + severityLevel} onClick={this.setSeverity}>
           {severityLevel}
         </div>
