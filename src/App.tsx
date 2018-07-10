@@ -313,6 +313,9 @@ export class App extends React.Component<{}, IState> {
   }
 
   public async componentDidMount() {
+
+    this.showTips();
+
     // Listen for changes to the current location.
     this.historyUnlisten = history.listen((loc, action) => {
       // location is an object like window.location
@@ -766,6 +769,51 @@ export class App extends React.Component<{}, IState> {
 
     await this.getData();
   };
+
+  private showTips() {
+    
+    const url = "https://github.com/Caspeco/lumberjack#hotkeys";
+    const key = `lumberjacktips`;
+    if(localStorage.getItem(key) === "false") { return; }
+
+    const btn = (
+      <Button.Group>
+        <Button
+          
+          key="close1"
+          // tslint:disable-next-line:jsx-no-lambda
+          onClick={() => {
+            localStorage.setItem(key, "false");
+            notification.close(key);
+          }}
+        >
+          Do not show again
+        </Button>,
+        <Button
+        key="2"
+        type="primary"
+        // tslint:disable-next-line:jsx-no-lambda
+        onClick={() => notification.close(key)}
+      >
+        Not now
+      </Button>
+    </Button.Group>
+    );
+    notification.info({
+      key,
+      btn,
+      icon: <Icon type="smile-o" style={{color: "#40a9ff"}} />,
+      duration: 60,
+      message: "Discover hidden features and hotkeys",
+      description: (
+        <div>
+          <p>Lumberjack should be easy to use... but there are a many power features to discover. Head over to the <a href={url} target="_blank">documentation</a> to learn them.</p>
+          <p>If you have any 💡 ideas or find any bugs 👾 - please <a href="https://github.com/Caspeco/lumberjack/issues" target="_blank">create a ticket</a> on github.</p>
+          <p>Cheers,<br /><a href="https://github.com/abergs" target="_blank">Anders Åberg</a></p>
+        </div>
+      )
+    });
+  }
 
   private showDetailedError(error: any) {
     console.error("Detailed error", error);
