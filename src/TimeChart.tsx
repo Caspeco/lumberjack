@@ -101,6 +101,7 @@ export class TimeChart extends React.Component<any, any> {
               timeRange={timeseries3.timerange()}
               enableDragZoom
               onTimeRangeChanged={this.handleTimeRangeChange}
+              trackerPosition={this.props.trackerPosition}
             >
               <ChartRow height="100">
                 <YAxis

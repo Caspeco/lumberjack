@@ -9,6 +9,7 @@ interface IConsoleProps {
     rows: List<ILogRow>;
     setGrep: (str: {}) => void;
     showDetails: (row: ILogRow) => void;
+    onRowHover: (row: ILogRow) => void;
 }
 
 export class ConsoleView extends React.Component<IConsoleProps, any> {
@@ -62,6 +63,7 @@ export class ConsoleView extends React.Component<IConsoleProps, any> {
                 key={key}
                 setGrep={this.props.setGrep}
                 showDetails={this.props.showDetails}
+                onHover={this.props.onRowHover}
             />
         );
     };

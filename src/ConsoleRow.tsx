@@ -14,6 +14,7 @@ export interface IConsoleRowProps {
   row: any;
   setGrep: (values: {}) => void;
   showDetails: (row: ILogRow) => void;
+  onHover: (row: any) => void;
 }
 
 const COLOR_MAP = {};
@@ -98,7 +99,7 @@ export class ConsoleRow extends React.Component<IConsoleRowProps, any> {
       color: ConsoleRow.getColor(r.get("cloud_RoleInstance"))
     };
     return (
-      <div className="consoleRow" key={r.get("itemId")} onClick={this.handleClick}>
+      <div className="consoleRow" key={r.get("itemId")} onClick={this.handleClick} onMouseOver={this.onHover} onMouseOut={this.onHover}>
         <a id={r.get("itemId")} className="anchor" />
         <Tooltip placement="topLeft" title={r.get("cloud_RoleInstance")}>
           <div
@@ -130,6 +131,14 @@ export class ConsoleRow extends React.Component<IConsoleRowProps, any> {
         <div className="itemType">{r.get("itemType")}</div>
       </div>
     );
+  }
+
+  private onHover = (e: any) => {
+    if(e.type === "mouseout") {
+      this.props.onHover(null);
+    } else {
+      this.props.onHover(this.props.row);
+    }    
   }
 
   private handleClick = (e: React.MouseEvent<HTMLDivElement>): any => {

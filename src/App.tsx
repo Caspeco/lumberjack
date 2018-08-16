@@ -196,6 +196,7 @@ interface IState {
   currentQuery: number;
   graphData: any;
   autoRefresh: boolean;
+  onRowHoverDate: Date | null
   // defaultRange: [moment.Moment,moment.Moment]
 }
 
@@ -286,7 +287,8 @@ export class App extends React.Component<{}, IState> {
       queryHistory: List(),
       currentQuery: 0,
       graphData: null,
-      autoRefresh: false
+      autoRefresh: false,
+      onRowHoverDate: null,
     };
 
     // @ts-ignore
@@ -496,6 +498,7 @@ export class App extends React.Component<{}, IState> {
                   <TimeChart
                     data={this.state.graphData}
                     onTimeRangeChange={this.timeRangeChangeImmediate}
+                    trackerPosition={this.state.onRowHoverDate}
                   />
                 </header>
 
@@ -503,6 +506,7 @@ export class App extends React.Component<{}, IState> {
                   rows={lc.state.rows}
                   setGrep={this.handleSetGrep}
                   showDetails={this.handleShowDetails}
+                  onRowHover={this.onRowHover}
                 />
                 <Modal
                   title={<span>Details<small className="helptext"> - Ctrl+Click on row to open</small></span>}
@@ -621,6 +625,14 @@ export class App extends React.Component<{}, IState> {
           <p>We noticed you launched Lumberjack with new settings, would you like to save them?</p>
         </div>
       )
+    });
+  }
+
+   private onRowHover = (row: any) => {
+    this.setState((ps) => {
+      return {
+        onRowHoverDate: new Date(row ? row.get("timestamp") : null)
+      }
     });
   }
 
