@@ -70,6 +70,7 @@ interface IQueryObject {
   timeRange: {
     from: moment.Moment;
     to?: moment.Moment;
+    fromRelative: string|null;
   };
   orderBy: "desc" | "asc";
   grep: string;
@@ -107,8 +108,21 @@ function getAiQueries(query: IQueryObject) {
     sl.length > 0 ? `where severityLevel in (${sl.join(",")})` : "";
   // if to is null it should be now.
 
+  let relativeDate: any;
+  
+  if(query.timeRange.fromRelative) {    
+    const time = query.timeRange.fromRelative;
+    const amount = parseInt(time.substr(0, 2), 10);
+    const unit = time[2];
+
+    relativeDate = moment().subtract(
+      amount as any,
+      unit
+    ).utc();
+  }
+
   const to = (query.timeRange.to || moment()).clone().utc();
-  const from = query.timeRange.from.clone().utc();
+  const from = relativeDate || query.timeRange.from.clone().utc();
 
   const pq = SearchString.parse(query.grep);
   // console.log("pq", pq.toString());
@@ -145,7 +159,7 @@ function getAiQueries(query: IQueryObject) {
     | ${severityLevel}
     
     `;
-  console.log("dbeug", query.timeRange.from.diff(to, "days"));
+  // console.log("dbeug", query.timeRange.from.diff(to, "days"));
   const bucketSize =
     to.diff(from, "days") > 10
       ? "6h"
@@ -155,7 +169,7 @@ function getAiQueries(query: IQueryObject) {
           ? "5m"
           : "1m";
 
-  console.log("Bucket size", bucketSize);
+  // console.log("Bucket size", bucketSize);
 
   const graphQuery = `${q2}
   | order by timestamp ${query.orderBy}, itemId desc
@@ -227,6 +241,7 @@ export class App extends React.Component<{}, IState> {
     const existingQuery = {
       ...momentjson(localStorage.getItem("query") as string)
     };
+
     if (existingQuery && existingQuery.timeRange) {
       existingQuery.timeRange.from = existingQuery.timeRange.from
         ? existingQuery.timeRange.from
@@ -241,7 +256,8 @@ export class App extends React.Component<{}, IState> {
       source: "traces",
       timeRange: {
         from: moment().subtract(1, "h"),
-        to: null
+        to: null,
+        fromRelative: null
       },
       grep: "",
       severityLevel: ["1", "2", "3"],
@@ -436,25 +452,25 @@ export class App extends React.Component<{}, IState> {
                   <div className="searchControls">
                     <Button.Group size="small">
                       {/* tslint:disable:jsx-no-lambda*/}
-                      <Button onClick={() => this.setAgo("30m")}>
+                      <Button onClick={() => this.setAgo("30m")} type={this.state.query.timeRange.fromRelative === "30m" ? "primary" : undefined}>
                         Last 30m
                       </Button>
-                      <Button onClick={() => this.setAgo("01h")}>
+                      <Button onClick={() => this.setAgo("01h")} type={this.state.query.timeRange.fromRelative === "01h" ? "primary" : undefined}>
                         Last 60m
                       </Button>
-                      <Button onClick={() => this.setAgo("02h")}>
+                      <Button onClick={() => this.setAgo("02h")} type={this.state.query.timeRange.fromRelative === "02h" ? "primary" : undefined}>
                         Last 2h
                       </Button>
-                      <Button onClick={() => this.setAgo("12h")}>
+                      <Button onClick={() => this.setAgo("12h")} type={this.state.query.timeRange.fromRelative === "12h" ? "primary" : undefined}>
                         Last 12h
                       </Button>
-                      <Button onClick={() => this.setAgo("24h")}>
+                      <Button onClick={() => this.setAgo("24h")} type={this.state.query.timeRange.fromRelative === "24h" ? "primary" : undefined}>
                         Last 24h
                       </Button>
-                      <Button onClick={() => this.setAgo("02d")}>
+                      <Button onClick={() => this.setAgo("02d")} type={this.state.query.timeRange.fromRelative === "02d" ? "primary" : undefined}>
                         Last 2d
                       </Button>
-                      <Button onClick={() => this.setAgo("07d")}>
+                      <Button onClick={() => this.setAgo("07d")} type={this.state.query.timeRange.fromRelative === "07d" ? "primary" : undefined}>
                         Last week
                       </Button>
                       {/* tslint:enable:jsx-no-lambda*/}
@@ -640,15 +656,14 @@ export class App extends React.Component<{}, IState> {
     this.setState({ showDetails: null });
   };
   private setAgo = (time: string) => {
-    const amount = parseInt(time.substr(0, 2), 10);
-    const unit = time[2];
-    this.timeRangeChangeImmediate(
-      (this.state.query.timeRange.from = moment().subtract(
-        amount as any,
-        unit
-      )),
-      (null as any) as moment.Moment
-    );
+    // const amount = parseInt(time.substr(0, 2), 10);
+    // const unit = time[2];'
+    // (this.state.query.timeRange.from = moment().subtract(
+    //   amount as any,
+    //   unit
+    // )
+    this.timeRangeChangeImmediate(null,null,time);
+    
   };
 
   private newApp = (field: string, e: any) => {
@@ -786,18 +801,19 @@ export class App extends React.Component<{}, IState> {
    * @private
    * @memberof App
    */
-  private timeRangeChangeImmediate = (from: moment.Moment, to: moment.Moment) => {
+  private timeRangeChangeImmediate = (from: moment.Moment | null, to: moment.Moment | null, fromRelative?: string) => {
     const ms: [moment.Moment] = [from, to] as any;
-    this.rangeChange(ms, [], true);
+    this.rangeChange(ms, [], true, fromRelative);
   };
-  private rangeChange = (dates: [moment.Moment], dateStrings?: string[], immediate?: boolean) => {
+  private rangeChange = (dates: [moment.Moment], dateStrings?: string[], immediate?: boolean, fromRelative?: string) => {
     this.setState(ps => {
       return {
         query: {
           ...ps.query,
           timeRange: {
             from: dates[0],
-            to: dates[1]
+            to: dates[1],
+            fromRelative: fromRelative || null
           }
         }
       };
@@ -993,11 +1009,22 @@ export class App extends React.Component<{}, IState> {
         query: queries.logQuery
       });
 
+      // count the number of rows and set title
       // console.log("GRAPH RES", await graphRes);
-      this.setState({
-        graphData: await graphRes
+      const awaitedRes = await graphRes;
+      const reducer = (accumulator:number, currentValue:any[]) => accumulator + currentValue[1] + currentValue[2]+ currentValue[3];
+      const count = awaitedRes.tables[0].rows.reduce(reducer,0);
+      window.document.title =
+      "(" + count + ") " + this.state.settings.currentApp.name + " - Lumberjack";
+      // console.log("count", count);
+
+      this.setState({        
+        graphData: awaitedRes
       });
-      console.log("DOOOOONE", await logRes);
+      
+      // Now wait for the rest to load
+      await logRes;
+      // console.log("DOOOOONE", await logRes);
 
       message.success("Success!", 1.5);
     } catch (error) {
