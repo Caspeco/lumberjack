@@ -238,8 +238,21 @@ export class App extends React.Component<{}, IState> {
   constructor(props: {}) {
     super(props);
 
+
+    // query from querystring
+    let parsedSearch: any = { query: null}
+    if (document.location.search) {
+      parsedSearch = document.location.search
+        .slice(1)
+        .split("&")
+        .map(p => decodeURI(p))
+        .map(p => p.split("="))
+        .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
+    }
+
     const existingQuery = {
-      ...momentjson(localStorage.getItem("query") as string)
+      ...momentjson(localStorage.getItem("query") as string),
+      ...momentjson(parsedSearch.query)
     };
 
     if (existingQuery && existingQuery.timeRange) {
