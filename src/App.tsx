@@ -240,7 +240,7 @@ export class App extends React.Component<{}, IState> {
 
 
     // query from querystring
-    let parsedSearch: any = { query: null}
+    let parsedSearch: any = { }
     if (document.location.search) {
       parsedSearch = document.location.search
         .slice(1)
@@ -252,7 +252,7 @@ export class App extends React.Component<{}, IState> {
 
     const existingQuery = {
       ...momentjson(localStorage.getItem("query") as string),
-      ...momentjson(parsedSearch.query)
+      ...momentjson(parsedSearch.query || null)
     };
 
     if (existingQuery && existingQuery.timeRange) {
