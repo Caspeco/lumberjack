@@ -79,6 +79,7 @@ interface IQueryObject {
   maxAge?: number;
   take: number;
   alarm?: number;
+  autoRefresh?: boolean;  
 }
 
 function escapeai(str: string) {
@@ -211,8 +212,7 @@ interface IState {
   queryHistory: List<Map<any, any>>;
   currentQuery: number;
   graphData: any;
-  autoRefresh: boolean;
-  onRowHoverDate: Date | null
+  onRowHoverDate: Date | null;  
   // defaultRange: [moment.Moment,moment.Moment]
 }
 
@@ -318,7 +318,6 @@ export class App extends React.Component<{}, IState> {
       queryHistory: List(),
       currentQuery: 0,
       graphData: null,
-      autoRefresh: false,
       onRowHoverDate: null,
     };
 
@@ -345,6 +344,9 @@ export class App extends React.Component<{}, IState> {
           break;
       }
     });
+
+    // start autorefresh
+    this.startStopAutoRefresh(this.state.query.autoRefresh);
   }
 
   public async componentDidMount() {
@@ -430,12 +432,13 @@ export class App extends React.Component<{}, IState> {
       to
     ];
 
+    // console.log("APP R#ENDER");
     return (
       <Provider inject={[logContainer]}>
         <Subscribe to={[LogContainer]}>
           {lc => (
             <HotKeys keyMap={keyBindingsMap} handlers={handlers}>
-              <Favicon url={["favicon.ico","favicon2.ico"]} animated={this.state.query.alarm && lc.state.totalCount > this.state.query.alarm} />
+              <Favicon url={["favicon.ico","favicon2.ico"]} animated={!!this.state.query.alarm && lc.state.totalCount > this.state.query.alarm} />
               <div className="App">
                 <header className="App-header">
                   <div className="topline">
@@ -450,7 +453,7 @@ export class App extends React.Component<{}, IState> {
                     </div>
                     <TreeSelect {...tProps} />
                     <Checkbox
-                      checked={this.state.autoRefresh}
+                      checked={this.state.query.autoRefresh}
                       className="leftMargin"
                       onChange={this.handleAutoRefreshChange}
                     >
@@ -722,20 +725,33 @@ export class App extends React.Component<{}, IState> {
 
   private handleAutoRefreshChange = (e: any) => {
     //  CheckboxChangeEvent
-    this.setState({
-      autoRefresh: e.target.checked
-    });
-
-    clearInterval(this.refreshTimerId);
-
-    const refreshRate = 60 * 1000; // every 1 min
-    if (e.target.checked) {
+    const checked = e.target.checked;
+    this.setState(ps => {
+      return {
+        query: {
+          ...ps.query,
+          autoRefresh: checked
+        }
+      };
+    }, () => {
+      // save start value to query
       this.getData();
+      // start / stop timer
+      this.startStopAutoRefresh(checked);
+    });
+  };
+
+  private startStopAutoRefresh(start: boolean | undefined) {
+    clearInterval(this.refreshTimerId);
+    
+    const refreshRate = 10 * 1000; // every 1 min
+    if (!!start) {
+      console.log("get data", start);
       this.refreshTimerId = setInterval(() => {
         this.getData();
       }, refreshRate);
-    }
-  };
+    }    
+  }
 
   private goBack = () => {
     const current = this.state.currentQuery;

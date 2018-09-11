@@ -20,7 +20,7 @@ export class ConsoleView extends React.Component<IConsoleProps, any> {
     }
 
     public render() {
-        console.log("render rows count", this.props.rows.count());
+        // console.log("render rows count", this.props.rows.count());
         return this.props.rows.isEmpty() ? (
             <div className="consoleView">No entries...</div>
         ) : (
