@@ -744,7 +744,7 @@ export class App extends React.Component<{}, IState> {
   private startStopAutoRefresh(start: boolean | undefined) {
     clearInterval(this.refreshTimerId);
     
-    const refreshRate = 10 * 1000; // every 1 min
+    const refreshRate = 60 * 1000; // every 1 min
     if (!!start) {
       console.log("get data", start);
       this.refreshTimerId = setInterval(() => {
