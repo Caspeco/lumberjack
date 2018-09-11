@@ -105,14 +105,9 @@ function where(fields: string[], value: string, negated: boolean) {
   return q.substr(0, q.length - 4);
 }
 
-function getAiQueries(query: IQueryObject) {
-  const sl = translateSeverityLevelFromTree(query.severityLevel);
-  const severityLevel =
-    sl.length > 0 ? `where severityLevel in (${sl.join(",")})` : "";
-  // if to is null it should be now.
-
+function getTimeRange(query: IQueryObject): [moment.Moment,moment.Moment] {
   let relativeDate: any;
-  
+
   if(query.timeRange.fromRelative) {    
     const time = query.timeRange.fromRelative;
     const amount = parseInt(time.substr(0, 2), 10);
@@ -126,6 +121,20 @@ function getAiQueries(query: IQueryObject) {
 
   const to = (query.timeRange.to || moment()).clone().utc();
   const from = relativeDate || query.timeRange.from.clone().utc();
+
+  return [from, to];
+ }
+
+function getAiQueries(query: IQueryObject) {
+  const sl = translateSeverityLevelFromTree(query.severityLevel);
+  const severityLevel =
+    sl.length > 0 ? `where severityLevel in (${sl.join(",")})` : "";
+  // if to is null it should be now.
+
+  const range = getTimeRange(query);
+  
+  const from = range[0];
+  const to = range[1];
 
   const pq = SearchString.parse(query.grep);
   // console.log("pq", pq.toString());
@@ -422,7 +431,7 @@ export class App extends React.Component<{}, IState> {
     };
 
     const settings = this.state.settings;
-
+    const range = getTimeRange(this.state.query);
     const to = (this.state.query.timeRange.to
       ? this.state.query.timeRange.to
       : undefined) as moment.Moment;
@@ -534,6 +543,8 @@ export class App extends React.Component<{}, IState> {
                     data={this.state.graphData}
                     onTimeRangeChange={this.timeRangeChangeImmediate}
                     trackerPosition={this.state.onRowHoverDate}
+                    startTime={range[0]}
+                    endTime={range[1]}
                   />
                 </header>
 

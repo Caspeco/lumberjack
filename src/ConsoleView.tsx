@@ -23,8 +23,9 @@ export class ConsoleView extends React.Component<IConsoleProps, any> {
         // console.log("render rows count", this.props.rows.count());
         return this.props.rows.isEmpty() ? (
             <div className="consoleView">No entries...</div>
-        ) : (
+        ) : (                
                 <DynamicList
+                    key="list"
                     rows={this.props.rows}
                     currentLength={this.props.rows.count()}
                     threshold={"50%"}
@@ -51,7 +52,7 @@ export class ConsoleView extends React.Component<IConsoleProps, any> {
     };
 
     private itemsRenderer = (items: any, ref: any) => (
-        <div className="consoleView" ref={ref}>
+        <div className="consoleView" ref={ref}>            
             {items}
         </div>
     );

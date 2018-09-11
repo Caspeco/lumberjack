@@ -5,9 +5,9 @@ import {
   YAxis,
   BarChart,
   Resizable,
-  AreaChart
+  AreaChart  
 } from "react-timeseries-charts";
-import { TimeSeries, Index } from "pondjs";
+import { TimeSeries, Index, TimeRange } from "pondjs";
 import * as moment from "moment";
 import * as React from "react";
 
@@ -93,13 +93,14 @@ export class TimeChart extends React.Component<any, any> {
       }
     }
 
+    const timeRange = new TimeRange(this.props.startTime, this.props.endTime);
     return (
       <div className="graph">
         <div style={{}}>
           <Resizable>
             <ChartContainer
-              timeRange={timeseries3.timerange()}
-              enableDragZoom
+              timeRange={timeRange}
+              enableDragZoom={true}              
               onTimeRangeChanged={this.handleTimeRangeChange}
               trackerPosition={this.props.trackerPosition}
             >
