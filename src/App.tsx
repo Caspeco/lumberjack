@@ -32,6 +32,7 @@ import { TimeChart } from "./TimeChart";
 import { logContainer, LogContainer } from "./logContainer";
 import createHistory from "history/createBrowserHistory";
 import { UnregisterCallback } from "history";
+import Favicon from 'react-favicon';
 
 const history = createHistory();
 const API_BASE = "https://api.applicationinsights.io/v1/apps/";
@@ -77,6 +78,7 @@ interface IQueryObject {
   severityLevel: string[];
   maxAge?: number;
   take: number;
+  alarm?: number;
 }
 
 function escapeai(str: string) {
@@ -433,6 +435,7 @@ export class App extends React.Component<{}, IState> {
         <Subscribe to={[LogContainer]}>
           {lc => (
             <HotKeys keyMap={keyBindingsMap} handlers={handlers}>
+              <Favicon url={["favicon.ico","favicon2.ico"]} animated={this.state.query.alarm && lc.state.totalCount > this.state.query.alarm} />
               <div className="App">
                 <header className="App-header">
                   <div className="topline">
@@ -1031,6 +1034,7 @@ export class App extends React.Component<{}, IState> {
       "(" + count + ") " + this.state.settings.currentApp.name + " - Lumberjack";
       // console.log("count", count);
 
+      logContainer.setCount(count);
       this.setState({        
         graphData: awaitedRes
       });

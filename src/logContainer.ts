@@ -8,7 +8,8 @@ export interface ILogState {
 export class LogContainer extends Container<ILogState> {
 
     public state = {
-        rows: List()
+        rows: List(),
+        totalCount: 0
     };
 
     private pendingSet: List<any> = List();
@@ -20,6 +21,13 @@ export class LogContainer extends Container<ILogState> {
         console.log("pending changes", this.pendingChanges.count());
         this.innerAdd();
     };
+
+    public setCount(count:number) {
+        // @ts-ignore
+        this.setState(() => {
+            return {totalCount: count};
+        });
+    }
 
     public set = (rows: List<any>) => {
         console.log("set", rows);

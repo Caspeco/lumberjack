@@ -10,3 +10,4 @@ declare module 'react-timeseries-charts';
 declare module 'pondjs';
 declare module 'event-worker';
 declare module 'json-markup';
+declare module 'react-favicon';
