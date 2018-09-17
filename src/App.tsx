@@ -447,7 +447,10 @@ export class App extends React.Component<{}, IState> {
         <Subscribe to={[LogContainer]}>
           {lc => (
             <HotKeys keyMap={keyBindingsMap} handlers={handlers}>
-              <Favicon url={["favicon.ico","favicon2.ico"]} animated={!!this.state.query.alarm && lc.state.totalCount > this.state.query.alarm} />
+              { (!!this.state.query.alarm && lc.state.totalCount > this.state.query.alarm) ?
+              <Favicon url={["favicon.ico","favicon2.ico"]} animated /> :
+              <Favicon url={"favicon.ico"} />
+            }
               <div className="App">
                 <header className="App-header">
                   <div className="topline">
