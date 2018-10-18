@@ -57,12 +57,15 @@ export class ConsoleRow extends React.Component<IConsoleRowProps, any> {
 
   constructor(props: any) {
     super(props);
+    this.state = {
+      expanded: false
+    }
   }
 
   public shouldComponentUpdate(nextProps: any, nextState: any) {
-    if (!nextProps.row.equals(this.props.row)) {
+    if (!nextProps.row.equals(this.props.row) || this.state.expanded !== nextState.expanded) {
       return true;
-    }
+    } 
     return false;
   }
 
@@ -89,16 +92,17 @@ export class ConsoleRow extends React.Component<IConsoleRowProps, any> {
       }
     );
 
-    // const handlers = {
-    //     'ctrl+enter': this.setGrep
-    // };
+    
     const r: any = row;
-    // console.log("Render?", r.toJS());
     const opId = r.get("operation_Id");
     const style = {
       color: ConsoleRow.getColor(r.get("cloud_RoleInstance"))
     };
+    console.log("expanded", this.state.expanded);
+    const expanded = this.state.expanded;
+
     return (
+      <>
       <div className="consoleRow" key={r.get("itemId")} onClick={this.handleClick} onMouseOver={this.onHover} onMouseOut={this.onHover}>
         <a id={r.get("itemId")} className="anchor" />
         <Tooltip placement="topLeft" title={r.get("cloud_RoleInstance")}>
@@ -130,7 +134,9 @@ export class ConsoleRow extends React.Component<IConsoleRowProps, any> {
         <div className="message">{msg}</div>
         <div className="itemType">{r.get("itemType")}</div>
       </div>
-    );
+   {expanded ? <ExpandedRow {...this.props} /> : null}
+      </>
+);
   }
 
   private onHover = (e: any) => {
@@ -176,6 +182,24 @@ export class ConsoleRow extends React.Component<IConsoleRowProps, any> {
   };
 
   private showDetails = () => {
-    this.props.showDetails(this.props.row);
+    this.setState({
+      expanded: true
+    });
+    // this.props.showDetails(this.props.row);
   };
+}
+
+class ExpandedRow extends React.Component<any, any> {
+  public render() {
+    console.log("row", this.props.row.toJS())
+    return (<div className="consoleRow-expanded">
+      {this.props.row.filter((value:any, key:any) => !(value === null || value === undefined || value === "")).sortBy((value:any, key:any) => value.toString().length).map((value:any, rkey:any) => {
+        return (
+        <div className="row-prop" key={"exp-row" + rkey}>
+          <div className="row-prop-key">{rkey}</div>
+          <div className="row-prop-value">{value}</div>
+        </div>
+      );}).toList()}
+    </div>);
+  }
 }

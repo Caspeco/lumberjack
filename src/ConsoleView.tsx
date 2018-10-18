@@ -40,7 +40,7 @@ export class ConsoleView extends React.Component<IConsoleProps, any> {
     }
 
     private intersect = (size: number, pageSize: number) => {
-        console.log("Intersect event:", size, pageSize);
+        // console.log("Intersect event:", size, pageSize);
         worker1.emit("loadmore", {
             skip: size,
             take: pageSize
