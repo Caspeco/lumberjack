@@ -193,7 +193,9 @@ class ExpandedRow extends React.Component<any, any> {
   public render() {
     console.log("row", this.props.row.toJS())
     return (<div className="consoleRow-expanded">
-      {this.props.row.filter((value:any, key:any) => !(value === null || value === undefined || value === "")).sortBy((value:any, key:any) => value.toString().length).map((value:any, rkey:any) => {
+      {this.props.row.filter((value:any, key:any) => !(value === null || value === undefined || value === ""))
+      // .sortBy((value:any, key:any) => value.toString().length)
+      .map((value:any, rkey:any) => {
         return (
         <div className="row-prop" key={"exp-row" + rkey}>
           <div className="row-prop-key">{rkey}</div>
