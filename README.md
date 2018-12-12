@@ -26,6 +26,22 @@ It will give you an overview of your logs with a chart that shows you amount of 
  * `ctrl+enter`: Grep with currently selected text
  * `ctrl+click`: Open details view for row by ctrl+clicking on it
 
+## Custom queries
+Lumberjack allows you to inject custom query text to the `@@`-property or the shorthand `@` for simple customdimension properties.  
+For example:
+
+* `@@:"duration > 100"`
+* `@@:"customDimensions.elapsedMilliseconds >= 900"`
+* `@@:"customDimensions['elapsed'] > 100 and customDimensions['requestVerb'] == 'POST'"`
+
+Since filtering on custom dimensions is common, it has a shortcut: `@:"elapsedMilliseconds >= 900"`. This shortcut will only work for simple scenarios where you filter on one condition and the customDimension-name does not include spaces. For advanced custom querying, use the `@@`-syntax.
+
+Examples of customdimension queries:
+
+* `@:"elapsed > 100"`
+* `@:"CorrelationId == 'abc'"`
+* `@:"CorrelationId startswith 'x1'"`
+
 ## To get started using it
 
 1. Clone the repo

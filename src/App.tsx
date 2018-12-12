@@ -94,7 +94,22 @@ function translateSeverityLevelFromTree(val: string[]) {
   });
 }
 
+function whereRaw(raw: string) {
+  const q = `| where ${raw}`;
+  return q;
+}
+
+
+
 function where(fields: string[], value: string, negated: boolean) {
+  if(fields[0] === "@@") {
+    return whereRaw(value);
+  }
+
+  if(fields[0] === "@") {
+    return whereRaw("customDimensions." + value);
+  }
+
   let q = "| where ";
   fields.forEach(field => {
     q += `${field} ${negated ? "!" : ""}contains "${value}" ${
@@ -102,8 +117,9 @@ function where(fields: string[], value: string, negated: boolean) {
     } `;
   });
   console.log("Where thing?", q);
-  return q.substr(0, q.length - 4);
+  return q.substr(0, q.length - 4);  
 }
+
 
 function getTimeRange(query: IQueryObject): [moment.Moment,moment.Moment] {
   let relativeDate: any;
@@ -140,6 +156,9 @@ function getAiQueries(query: IQueryObject) {
   // console.log("pq", pq.toString());
   const txtSegments: any[] = pq.getTextSegments();
   const conditions: any[] = pq.getConditionArray();
+
+  // console.log("ALERT", rawQueries,  txtSegments, conditions);
+
   const fieldsToGrep = [
     "message",
     "operation_Id",
@@ -263,7 +282,7 @@ export class App extends React.Component<{}, IState> {
 
     const existingQuery = {
       ...momentjson(localStorage.getItem("query") as string),
-      ...momentjson(parsedSearch.query || null)
+      ...momentjson(parsedSearch.query ? decodeURIComponent(parsedSearch.query) : null)
     };
 
     if (existingQuery && existingQuery.timeRange) {
@@ -377,7 +396,7 @@ export class App extends React.Component<{}, IState> {
 
         if (parsedSearch.query) {
           this.setState({
-            query: momentjson(parsedSearch.query)
+            query: momentjson(parsedSearch.query ? decodeURIComponent(parsedSearch.query) : null)
           });
         }
       }
@@ -1010,7 +1029,7 @@ export class App extends React.Component<{}, IState> {
     if (!last.equals(tx)) {
       history.push({
         pathname: "/",
-        search: "?query=" + JSON.stringify(tx.toJS())
+        search: "?query=" + encodeURIComponent(JSON.stringify(tx.toJS()))
       });
 
       this.setState(
